@@ -17,6 +17,9 @@ public static class ObservationRules
         if (!ValidText(item.Guid, 128) ||
             !ValidText(item.Name, 128) || !ValidText(item.Realm, 128) || !ValidText(item.Class, 32) || item.Level is < 0 or > 1000)
             throw new InvalidDataException("Invalid character identity.");
+        if ((item.Guild is null) != (item.GuildUpdatedAt is null) ||
+            item.Guild is not null && ((item.Guild.Length > 0 && !ValidText(item.Guild, 128)) || !Finite(item.GuildUpdatedAt!.Value)))
+            throw new InvalidDataException("Invalid guild membership or incomplete guild timestamp.");
         if (!Finite(item.Seconds) || !Finite(item.UpdatedAt) || item.ServerSeconds.HasValue != item.ServerAt.HasValue)
             throw new InvalidDataException("Invalid playtime values or incomplete server baseline.");
         if (item.Confirmed && (!Finite(item.ServerSeconds!.Value) || !Finite(item.ServerAt!.Value) || item.Seconds < item.ServerSeconds.Value || item.UpdatedAt < item.ServerAt.Value))
@@ -48,13 +51,21 @@ public static class ObservationRules
         foreach (var observation in observations)
         {
             Validate(observation); var identity = Identity(observation);
-            if (!byIdentity.TryGetValue(identity, out var old) || Compare(observation, old) > 0) byIdentity[identity] = observation;
+            if (!byIdentity.TryGetValue(identity, out var old)) byIdentity[identity] = observation;
+            else
+            {
+                var winner = Compare(observation, old) > 0 ? observation : old;
+                var guild = old.Guild is null ? observation : observation.Guild is null ? old :
+                    observation.GuildUpdatedAt > old.GuildUpdatedAt ||
+                    observation.GuildUpdatedAt == old.GuildUpdatedAt && CompareUtf8(observation.Guild, old.Guild) > 0 ? observation : old;
+                byIdentity[identity] = winner with { Guild = guild.Guild, GuildUpdatedAt = guild.GuildUpdatedAt };
+            }
         }
         return byIdentity.OrderBy(pair => pair.Key, StringComparer.Ordinal).Select(pair => pair.Value).ToList();
     }
     public static void ValidateSnapshot(DeviceSnapshot snapshot, string groupId)
     {
-        if (snapshot is null || snapshot.FormatVersion != 1 || !System.Guid.TryParseExact(snapshot.GroupId, "D", out _) || snapshot.GroupId != groupId ||
+        if (snapshot is null || snapshot.FormatVersion is not (1 or 2) || !System.Guid.TryParseExact(snapshot.GroupId, "D", out _) || snapshot.GroupId != groupId ||
             !System.Guid.TryParseExact(snapshot.DeviceId, "D", out _) || !ValidText(snapshot.DeviceName, 128) || snapshot.Revision <= 0 ||
             snapshot.Observations is null || snapshot.Observations.Count > MaximumObservations)
             throw new InvalidDataException("Unsupported or invalid device snapshot.");
@@ -62,6 +73,8 @@ public static class ObservationRules
         foreach (var observation in snapshot.Observations)
         {
             Validate(observation);
+            if (snapshot.FormatVersion == 1 && (observation.Guild is not null || observation.GuildUpdatedAt is not null))
+                throw new InvalidDataException("Guild membership requires snapshot format 2.");
             if (!keys.Add(observation.SourceId + "|" + Identity(observation))) throw new InvalidDataException("Duplicate observation in device snapshot.");
         }
     }

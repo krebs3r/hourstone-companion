@@ -17,12 +17,14 @@ public sealed record Observation
     [JsonRequired] public double UpdatedAt { get; init; }
     public double? ServerSeconds { get; init; }
     public double? ServerAt { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public string? Guild { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public double? GuildUpdatedAt { get; init; }
     [JsonIgnore] public bool Confirmed => ServerSeconds.HasValue && ServerAt.HasValue;
 }
 
 public sealed record DeviceSnapshot
 {
-    [JsonRequired] public int FormatVersion { get; init; } = 1;
+    [JsonRequired] public int FormatVersion { get; init; } = 2;
     [JsonRequired] public string GroupId { get; init; } = "";
     [JsonRequired] public string DeviceId { get; init; } = "";
     [JsonRequired] public string DeviceName { get; init; } = "";

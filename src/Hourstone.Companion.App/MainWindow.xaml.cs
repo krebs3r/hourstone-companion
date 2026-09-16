@@ -449,7 +449,7 @@ public partial class MainWindow : Window
     }
     public void SetLongNamePreview()
     {
-        if (demo) vm.SetObservations(MainViewModel.DemoData().Select((o, i) => i == 0 ? o with { Name = new string('W', 64), Realm = "A very long realm name for layout validation" } : o));
+        if (demo) vm.SetObservations(MainViewModel.DemoData().Select((o, i) => i == 0 ? o with { Name = new string('W', 64), Realm = "A very long realm name for layout validation", Guild = "A very long synthetic guild name for layout validation", GuildUpdatedAt = o.UpdatedAt } : o));
     }
     public bool English => vm.English;
     public bool CanApplyUpdate(DateTimeOffset noticeAt, bool wowRunning) => settingsDraft?.IsDirty != true && !savingSettings && UpdatePolicy.CanApply(busy, IsVisible, IsActive, modalOpen, LastInteraction, noticeAt, DateTimeOffset.UtcNow, wowRunning);

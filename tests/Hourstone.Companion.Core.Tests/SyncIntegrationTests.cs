@@ -17,7 +17,7 @@ public sealed class SyncIntegrationTests : IDisposable
         var client = Path.Combine(root, device, "WoW", "_retail_");
         var source = Sample.Source(sourceId) with { WoWRoot = Path.Combine(root, device, "WoW"), ClientDirectory = client };
         Directory.CreateDirectory(Path.GetDirectoryName(source.SavedVariablesPath)!); File.WriteAllText(source.SavedVariablesPath, Sample.Lua(source, Sample.Item(sourceId, seconds, guid)));
-        Directory.CreateDirectory(Path.GetDirectoryName(source.AddonTocPath)!); File.WriteAllText(source.AddonTocPath, "## Version: 0.2.0\n");
+        Directory.CreateDirectory(Path.GetDirectoryName(source.AddonTocPath)!); File.WriteAllText(source.AddonTocPath, "## Version: 0.2.1\n");
         service.SaveConfiguration(service.GetConfiguration() with { Sources = [source] }); return source;
     }
     private static DeviceSnapshot ReadPublished(CompanionService service)
@@ -188,6 +188,61 @@ public sealed class SyncIntegrationTests : IDisposable
         a.PauseCloud(true); var paused = await a.SyncNowAsync(); Assert.True(paused.AddonReady); Assert.False(paused.CloudPublished);
         File.WriteAllText(source.SavedVariablesPath, Sample.Lua(source, Sample.Item(source.SourceId), schema: 1));
         var pending = await a.SyncNowAsync(); Assert.False(pending.AddonReady); Assert.False(pending.CloudPublished);
+    }
+    [Fact]
+    public async Task GuildChangesConvergeWithoutReplacingPlayedBaselineOrReexportingForeignGuilds()
+    {
+        var a = Service("A"); var b = Service("B");
+        var sourceA = Configure(a, "A", "hs-a"); var sourceB = Configure(b, "B", "hs-b");
+        var local = Sample.Item("hs-a", 220) with { ServerSeconds = 200, ServerAt = 1700000100, UpdatedAt = 1700000120, Guild = "Old guild", GuildUpdatedAt = 1700000100 };
+        var remote = Sample.Item("hs-b") with { Guild = "Neue Gilde", GuildUpdatedAt = 1700000300 };
+        File.WriteAllText(sourceA.SavedVariablesPath, Sample.Lua(sourceA, local));
+        File.WriteAllText(sourceB.SavedVariablesPath, Sample.Lua(sourceB, remote));
+        var originalA = File.ReadAllText(sourceA.SavedVariablesPath);
+        await a.JoinSyncFolderAsync(Path.Combine(root, "Cloud")); await b.JoinSyncFolderAsync(Path.Combine(root, "Cloud"));
+        await b.SyncNowAsync(); await a.SyncNowAsync();
+        var row = Assert.Single(a.GetCharacters()); Assert.Equal(220, row.Seconds); Assert.Equal(local.ServerAt, row.ServerAt); Assert.Equal("Neue Gilde", row.Guild);
+        Assert.Equal("Old guild", Assert.Single(ReadPublished(a).Observations).Guild);
+        Assert.Equal("Neue Gilde", Assert.Single(ReadPublished(b).Observations).Guild); Assert.Equal(2, ReadPublished(a).FormatVersion);
+        Assert.Contains("guild=\"Neue Gilde\"", File.ReadAllText(Path.Combine(sourceA.DataAddonDirectory, "Data.lua")));
+        remote = remote with { Guild = "", GuildUpdatedAt = 1700000400 };
+        File.WriteAllText(sourceB.SavedVariablesPath, Sample.Lua(sourceB, remote));
+        await b.SyncNowAsync(); await a.SyncNowAsync(); Assert.Equal("", Assert.Single(a.GetCharacters()).Guild);
+        Assert.Equal(220, Assert.Single(a.GetCharacters()).Seconds); Assert.Equal(originalA, File.ReadAllText(sourceA.SavedVariablesPath));
+        File.WriteAllText(sourceB.SavedVariablesPath, "corrupted data");
+        Assert.Contains((await b.SyncNowAsync()).Issues, issue => issue.Code == "source_read_failed");
+        await a.SyncNowAsync(); Assert.Equal("", Assert.Single(a.GetCharacters()).Guild);
+        a.Dispose(); services.Remove(a); a = Service("A"); await a.SyncNowAsync();
+        Assert.Equal("", Assert.Single(a.GetCharacters()).Guild); Assert.Equal("Old guild", Assert.Single(ReadPublished(a).Observations).Guild);
+        b.SaveConfiguration(b.GetConfiguration() with { Sources = [] }); await b.SyncNowAsync(); await a.SyncNowAsync();
+        Assert.Equal("Old guild", Assert.Single(a.GetCharacters()).Guild); Assert.Equal(220, Assert.Single(a.GetCharacters()).Seconds);
+    }
+    [Fact]
+    public async Task LegacyCachedSnapshotsUpgradeOwnRevisionAndRetainUnchangedPeerWithoutFalseConflict()
+    {
+        var a = Service("A"); var source = Configure(a, "A", "hs-a");
+        await a.JoinSyncFolderAsync(Path.Combine(root, "Cloud")); await a.SyncNowAsync();
+        var config = a.GetConfiguration();
+        var remote = Sample.Snapshot("11111111-1111-1111-1111-111111111111", 5, Sample.Item("hs-peer", 500, "Player-2-CD")) with { FormatVersion = 1, GroupId = config.GroupId! };
+        var path = Path.Combine(config.CloudFolder!, "peer.json"); File.WriteAllText(path, ObservationRules.CanonicalSnapshot(remote));
+        await a.SyncNowAsync(); var legacyOwn = ReadPublished(a) with { FormatVersion = 1 };
+        var legacyJson = ObservationRules.CanonicalSnapshot(legacyOwn); Assert.DoesNotContain("guild", legacyJson);
+        a.Dispose(); services.Remove(a);
+        using (var connection = new Microsoft.Data.Sqlite.SqliteConnection("Data Source=" + Path.Combine(root, "A", "app", "state.db")))
+        {
+            connection.Open(); using var command = connection.CreateCommand();
+            command.CommandText = "UPDATE snapshots SET json=$json,hash=$hash WHERE device_id=$device";
+            command.Parameters.AddWithValue("$json", legacyJson); command.Parameters.AddWithValue("$hash", SafeFiles.Sha256(legacyJson)); command.Parameters.AddWithValue("$device", config.DeviceId); command.ExecuteNonQuery();
+        }
+        File.WriteAllText(Path.Combine(config.CloudFolder!, config.DeviceId + ".json"), legacyJson);
+        a = Service("A"); var result = await a.SyncNowAsync(); Assert.True(result.Success, string.Join("; ", result.Issues));
+        var upgraded = ReadPublished(a); Assert.Equal(2, upgraded.FormatVersion); Assert.Equal(legacyOwn.Revision + 1, upgraded.Revision); Assert.Equal(config.DeviceId, upgraded.DeviceId);
+        Assert.Equal(source.SourceId, Assert.Single(a.GetConfiguration().Sources).SourceId); Assert.Equal(2, a.GetCharacters().Count);
+        Assert.Null(a.GetCharacters().Single(o => o.SourceId == "hs-peer").Guild);
+        Assert.True((await a.SyncNowAsync()).Success); Assert.Equal(upgraded.Revision, ReadPublished(a).Revision);
+        remote = remote with { FormatVersion = 2, Revision = 6, Observations = [remote.Observations[0] with { Guild = "Dawnwatch", GuildUpdatedAt = 1700001000 }] };
+        File.WriteAllText(path, ObservationRules.CanonicalSnapshot(remote)); Assert.True((await a.SyncNowAsync()).Success);
+        Assert.Equal("Dawnwatch", a.GetCharacters().Single(o => o.SourceId == "hs-peer").Guild);
     }
     public void Dispose()
     {

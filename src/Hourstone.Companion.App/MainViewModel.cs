@@ -28,7 +28,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ["CheckNow"] = ("Jetzt prüfen", "Check now"),
         ["SavedTime"] = ("Gespeicherte Spielzeit", "Saved playtime"),
         ["Characters"] = ("Charaktere", "Characters"),
-        ["Search"] = ("Charakter suchen …", "Search characters …"),
+        ["Search"] = ("Charakter oder Gilde suchen …", "Search characters or guilds …"),
         ["Hours"] = ("Stunden", "Hours"),
         ["Days"] = ("Tage + Std.", "Days + hours"),
         ["EmptyTitle"] = ("Dein Überblick beginnt hier", "Your overview starts here"),
@@ -37,7 +37,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ["ClientsIntro"] = ("Wähle die lokalen WoW-Installationen und Accounts, deren Spielzeit du zusammen anzeigen möchtest.", "Select the local WoW installations and accounts you want to include."),
         ["AddWoW"] = ("WoW-Ordner hinzufügen", "Add WoW folder"),
         ["Discover"] = ("Installationen suchen", "Find installations"),
-        ["FirstSave"] = ("Hourstone 0.2 oder neuer muss einmal im jeweiligen Client geladen und durch Ausloggen oder /reload gespeichert werden. Originaldateien bleiben unter der Kontrolle von WoW.", "Load Hourstone 0.2 or later in each client, then log out or /reload once. WoW remains in control of its original files."),
+        ["FirstSave"] = ("Hourstone 0.2.1 oder neuer muss einmal im jeweiligen Client geladen und durch Ausloggen oder /reload gespeichert werden. Originaldateien bleiben unter der Kontrolle von WoW.", "Load Hourstone 0.2.1 or later in each client, then log out or /reload once. WoW remains in control of its original files."),
         ["SyncIntro"] = ("Verbinde deine PCs über einen gemeinsamen Dropbox- oder OneDrive-Ordner. Der Companion benötigt dafür kein eigenes Konto.", "Connect your PCs through a shared Dropbox or OneDrive folder. No Companion account is required."),
         ["Folder"] = ("Gemeinsamer Syncordner", "Shared sync folder"),
         ["ChooseFolder"] = ("Ordner auswählen", "Choose folder"),
@@ -145,7 +145,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     }
     void RefreshRows()
     {
-        Rows.Clear(); foreach (var o in observations.Where(x => x.Name.Contains(search, StringComparison.CurrentCultureIgnoreCase) && (string.IsNullOrEmpty(selectedClient) || selectedClient == Text("AllClients") || ClientName(x.Flavor) == selectedClient) && (string.IsNullOrEmpty(selectedRealm) || selectedRealm == Text("AllRealms") || x.Realm == selectedRealm)).OrderByDescending(x => x.Seconds).ThenBy(x => x.Name)) Rows.Add(new(o, this, hours));
+        Rows.Clear(); foreach (var o in observations.Where(x => (x.Name.Contains(search, StringComparison.CurrentCultureIgnoreCase) || (x.Guild?.Contains(search, StringComparison.CurrentCultureIgnoreCase) ?? false)) && (string.IsNullOrEmpty(selectedClient) || selectedClient == Text("AllClients") || ClientName(x.Flavor) == selectedClient) && (string.IsNullOrEmpty(selectedRealm) || selectedRealm == Text("AllRealms") || x.Realm == selectedRealm)).OrderByDescending(x => x.Seconds).ThenBy(x => x.Name)) Rows.Add(new(o, this, hours));
         Changed(nameof(EmptyVisibility)); Changed(nameof(EmptyMessage)); Changed(nameof(RowSummary));
     }
     public static string ClientName(string flavor) => flavor switch { "retail" => "Retail", "mists" => "Mists Classic", "tbc" => "TBC Anniversary", "era" => "Classic Era", _ => flavor };
@@ -158,7 +158,9 @@ public sealed class MainViewModel : INotifyPropertyChanged
             SourceId = "sample-source", Region = "eu", Guid = "Player-0000-CLASS" + i,
             Name = ClassNameForPreview(token), Realm = "Azeroth", Class = token,
             Flavor = token is "EVOKER" or "DEMONHUNTER" ? "retail" : token is "MONK" or "DEATHKNIGHT" ? "mists" : flavors[i % flavors.Length],
-            Level = 60, Seconds = (13 - i) * 3600, UpdatedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+            Level = 60, Seconds = (13 - i) * 3600, UpdatedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds(),
+            Guild = i % 4 == 0 ? null : i % 4 == 1 ? "" : "Hüter der Morgenröte",
+            GuildUpdatedAt = i % 4 == 0 ? null : DateTimeOffset.UtcNow.ToUnixTimeSeconds()
         }).ToList();
     }
     private static string ClassNameForPreview(string token) => CharacterRow.ClassName(token, false);
@@ -169,9 +171,10 @@ public sealed class MainViewModel : INotifyPropertyChanged
         string[] realms = ["Antonidas", "Blackhand", "Everlook", "Lakeshire", "Thunderstrike", "Thunderstrike", "Celebras", "Everlook"];
         string[] classes = ["DEMONHUNTER", "WARRIOR", "DRUID", "MAGE", "ROGUE", "PALADIN", "HUNTER", "WARLOCK"];
         string[] flavors = ["retail", "retail", "mists", "mists", "tbc", "tbc", "era", "era"];
+        string?[] guilds = ["Hüter der Morgenröte", "Hüter der Morgenröte", "Sternenwanderer", "", "Bund der Dämmerung", "Bund der Dämmerung", null, "Abenteurerbund"];
         int[] minutes = [50715, 32060, 18765, 12310, 7710, 4445, 2620, 675];
         int[] age = [120, 3600, 86400, 86400, 10800, 10800, 172800, 172800];
-        return Enumerable.Range(0, 8).Select(i => new Observation { SourceId = "sample-source", Region = "eu", Guid = "Player-0000-" + i, Name = names[i], Realm = realms[i], Class = classes[i], Flavor = flavors[i], Level = i < 2 ? 90 : i < 4 ? 90 : i < 6 ? 70 : 60, Seconds = minutes[i] * 60, UpdatedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - age[i] }).ToList();
+        return Enumerable.Range(0, 8).Select(i => new Observation { SourceId = "sample-source", Region = "eu", Guid = "Player-0000-" + i, Name = names[i], Realm = realms[i], Class = classes[i], Flavor = flavors[i], Level = i < 2 ? 90 : i < 4 ? 90 : i < 6 ? 70 : 60, Seconds = minutes[i] * 60, UpdatedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds() - age[i], Guild = guilds[i], GuildUpdatedAt = guilds[i] is null ? null : DateTimeOffset.UtcNow.ToUnixTimeSeconds() - age[i] }).ToList();
     }
 }
 
@@ -181,6 +184,15 @@ public sealed class CharacterRow
     public string Name => Value.Name;
     readonly bool light, english;
     public string Details => $"{Value.Realm} · {Value.Level} {ClassName(Value.Class, english)}";
+    public string Guild => Value.Guild switch
+    {
+        null => english ? "Not yet recorded" : "Noch nicht erfasst",
+        "" => english ? "No guild" : "Keine Gilde",
+        var name => name
+    };
+    public string GuildLine => (english ? "Guild: " : "Gilde: ") + Guild;
+    public string Tooltip => $"{Name}\n{Details}\n{GuildLine}" + (Value.Guild is null
+        ? (english ? "\nLog in with this character using Hourstone 0.2.1 or later, then log out or /reload." : "\nDiesen Charakter mit Hourstone 0.2.1 oder neuer einloggen, dann ausloggen oder /reload ausführen.") : "");
     public static string ClassName(string token, bool english) => token switch
     {
         "DEMONHUNTER" => english ? "Demon Hunter" : "Dämonenjäger",

@@ -217,12 +217,12 @@
                     <RowDefinition Height="*" />
                     <RowDefinition Height="40" />
                   </Grid.RowDefinitions>
-                  <DataGrid x:Name="CharacterGrid" ItemsSource="{Binding Rows}" SelectionMode="Single" CanUserSortColumns="True">
+                  <DataGrid x:Name="CharacterGrid" ItemsSource="{Binding Rows}" RowHeight="64" SelectionMode="Single" CanUserSortColumns="True">
                     <DataGrid.Columns>
                       <DataGridTemplateColumn Header="Charakter" Width="2.1*" SortMemberPath="Name">
                         <DataGridTemplateColumn.CellTemplate>
                           <DataTemplate>
-                            <Grid ToolTip="{Binding Details}">
+                            <Grid ToolTip="{Binding Tooltip}" AutomationProperties.Name="{Binding Tooltip}">
                               <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="55" />
                                 <ColumnDefinition Width="*" />
@@ -233,6 +233,7 @@
                               <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                 <TextBlock Text="{Binding Name}" Foreground="{Binding Color}" FontWeight="SemiBold" FontSize="16" />
                                 <TextBlock Text="{Binding Details}" Foreground="{DynamicResource Muted}" FontSize="13" />
+                                <TextBlock Text="{Binding GuildLine}" Foreground="{DynamicResource Muted}" FontSize="12" Margin="0,1,0,0" />
                               </StackPanel>
                             </Grid>
                           </DataTemplate>

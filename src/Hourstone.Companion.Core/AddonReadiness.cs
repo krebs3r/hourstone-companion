@@ -5,7 +5,7 @@ namespace Hourstone.Companion.Core;
 /// <summary>Reads only bounded TOC metadata; it never executes addon code or writes WoW files.</summary>
 public static class AddonReadiness
 {
-    public const string MinimumAddonVersion = "0.2.0";
+    public const string MinimumAddonVersion = "0.2.1";
     public const int MaximumTocBytes = 64 * 1024;
     public static LocalSourceStatus Inspect(SourceConfiguration source)
     {
@@ -33,7 +33,7 @@ public static class AddonReadiness
             }
             status = status with { DetectedAddonVersion = string.IsNullOrEmpty(detected) ? null : detected };
             var numeric = detected?.TrimStart('v', 'V');
-            var supported = Version.TryParse(numeric, out var version) && version >= new Version(0, 2, 0);
+            var supported = Version.TryParse(numeric, out var version) && version >= Version.Parse(MinimumAddonVersion);
             if (!supported) return status with
             {
                 Readiness = LocalSourceReadiness.AddonOutdated,

@@ -42,6 +42,9 @@ be provisioned separately; the repository does not contain one.
 - On two Windows devices, exercise Dropbox and OneDrive with locally resident folders.
 - Check offline play, reconnection, delayed and conflicting files, pause and disconnect.
 - Verify duplicate characters are counted once and newer server answers correct old estimates.
+- Check guild join, leave and pending guild information on every client family, then
+  exchange changes between PCs without altering the selected playtime baseline.
+- Upgrade a version 1 sync cache and verify that unchanged legacy snapshots remain accepted.
 - Exercise Retail, Mists Classic, TBC Anniversary and Classic Era with selected accounts.
 - Confirm the first data-addon installation requires a WoW restart and subsequent data
   refreshes load on login/reload without modifying SavedVariables.

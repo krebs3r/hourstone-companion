@@ -136,4 +136,47 @@ public sealed class MainViewModelTests
         var model = new MainViewModel(false); model.SetObservations([Character("Player-1-A", "Aria", flavor)]);
         var row = Assert.Single(model.Rows); Assert.Equal(label, row.Client); Assert.EndsWith("/Clients/" + iconFile, row.ClientIconPath);
     }
+    [Fact]
+    public void GuildDisplayDistinguishesMembershipAbsenceAndLegacyDataInBothLanguages()
+    {
+        var model = new MainViewModel(false);
+        model.SetObservations([
+            Character("Player-1-A", "Aria") with { Guild = "Hüter der Morgenröte", GuildUpdatedAt = 1000 },
+            Character("Player-1-B", "Borin") with { Guild = "", GuildUpdatedAt = 1000 },
+            Character("Player-1-C", "Cedric")
+        ]);
+        Assert.Equal("Gilde: Hüter der Morgenröte", model.Rows[0].GuildLine);
+        Assert.Equal("Gilde: Keine Gilde", model.Rows[1].GuildLine);
+        Assert.Equal("Gilde: Noch nicht erfasst", model.Rows[2].GuildLine);
+        Assert.Contains("Hourstone 0.2.1", model.Rows[2].Tooltip);
+        Assert.DoesNotContain("/reload", model.Rows[0].Tooltip);
+        model.SetLanguage(true);
+        Assert.Equal("Guild: Hüter der Morgenröte", model.Rows[0].GuildLine);
+        Assert.Equal("Guild: No guild", model.Rows[1].GuildLine);
+        Assert.Equal("Guild: Not yet recorded", model.Rows[2].GuildLine);
+        Assert.Contains("Log in with this character", model.Rows[2].Tooltip);
+    }
+    [Fact]
+    public void GuildSearchCombinesWithClientAndRealmAndRefreshesAfterLeaving()
+    {
+        var model = new MainViewModel(false);
+        var member = Character("Player-1-A", "Aria") with { Guild = "Hüter", GuildUpdatedAt = 1000 };
+        model.SetObservations([member, Character("Player-1-B", "Borin", "era") with { Guild = "Hüter", GuildUpdatedAt = 1000 }]);
+        model.Search = "hÜT"; Assert.Equal(2, model.Rows.Count);
+        model.SelectedClient = "Retail"; model.SelectedRealm = "Testrealm";
+        Assert.Equal("Aria", Assert.Single(model.Rows).Name); Assert.Equal("2 Std.", model.TotalTime);
+        model.SetObservations([member with { Guild = "", GuildUpdatedAt = 2000 }]);
+        Assert.Empty(model.Rows); Assert.Equal(1, model.CharacterCount);
+        model.Search = ""; Assert.Equal("Keine Gilde", Assert.Single(model.Rows).Guild);
+    }
+    [Fact]
+    public void FullGuildNameRemainsAvailableInTooltipWithoutInterpretingMarkup()
+    {
+        var model = new MainViewModel(false);
+        var guild = "<Hüter> |cff00ff00 test & \"friends\" " + new string('W', 60);
+        model.SetObservations([Character("Player-1-A", "Aria") with { Guild = guild, GuildUpdatedAt = 1000 }]);
+        var row = Assert.Single(model.Rows);
+        Assert.Equal(guild, row.Guild); Assert.Contains(guild, row.Tooltip); Assert.Contains(row.Details, row.Tooltip);
+    }
+
 }

@@ -1,10 +1,13 @@
 {
-  "formatVersion": 1,
+  "formatVersion": 2,
   "sourceRepository": "https://github.com/krebs3r/hourstone-azeroth-hours",
-  "sourceCommit": "7919c2f505f9d2a723baa5e41ef4c52629ca1234",
+  "sourceCommit": "85f6f9abab9dfe52ad10a571ba7ca18f7224d61b",
   "files": {
     "docs/sync-protocol-v1.md": "ff3c1f00cfa3f813b1eae10783b42dc11895683da00ba3ed5a97dd83c7a87555",
     "tests/Hourstone.Companion.Core.Tests/Fixtures/contract-v1.json": "6640d12452ce0119b103852118627771a1d5c393cb1b68840003b9a4bea6bbbe",
-    "tests/Hourstone.Companion.Core.Tests/Fixtures/snapshot-v1.json": "0b4939f4bcbc4bedef4aa4f36d1441cabd96a6e12d06f2dc494535542a4932e8"
+    "tests/Hourstone.Companion.Core.Tests/Fixtures/snapshot-v1.json": "0b4939f4bcbc4bedef4aa4f36d1441cabd96a6e12d06f2dc494535542a4932e8",
+    "docs/sync-protocol-v2.md": "b57f48d32e559d2ad1facfc560c4b390ce0d3f0b3c815b2aa455a6495e1f7829",
+    "tests/Hourstone.Companion.Core.Tests/Fixtures/contract-v2.json": "4c6f9bca17076672e10d26ebdbb30b592c175ed49e32948b7dffbd4da6eb2cb9",
+    "tests/Hourstone.Companion.Core.Tests/Fixtures/snapshot-v2.json": "7d04476ea072dffe45b665f84e952cce7a1f92a497f17309cbd5e61fc32f9c48"
   }
 }

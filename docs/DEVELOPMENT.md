@@ -34,7 +34,7 @@ pwsh -File tools/render-smoke.ps1 -Extended
 
 The script renders dark and light themes at 100%, 150% and 200% scaling and validates
 PNG dimensions. Settings, compact layouts and the full icon catalog also have
-synthetic render profiles. These checks demonstrate rendering and output integrity; visual
+synthetic render profiles with guilds, guildless characters and missing guild information. These checks demonstrate rendering and output integrity; visual
 review of layout, text truncation and keyboard use is still required.
 
 ## Local package
@@ -57,7 +57,7 @@ synthetic fixtures for tests. Install the local pre-push guard with
 
 ## Contract ownership
 
-The addon repository owns protocol version 1. Its document and synthetic fixtures
+The addon repository owns protocol version 2 and retained legacy protocol 1. Its document and synthetic fixtures
 are mirrored with SHA-256 pins in `docs/protocol-pin.json`. Run
 `python tools/check_protocol.py` to verify the pinned content. Protocol changes
 must update both repositories and their conformance tests in one compatible release.

@@ -52,7 +52,9 @@ public static class SavedVariablesReader
                 Seconds = seconds,
                 UpdatedAt = Number(row, "updatedAt"),
                 ServerSeconds = serverSeconds,
-                ServerAt = serverAt
+                ServerAt = serverAt,
+                Guild = version >= 2 ? OptionalString(row, "guild") : null,
+                GuildUpdatedAt = version >= 2 ? OptionalNumber(row, "guildUpdatedAt") : null
             };
             ObservationRules.Validate(observation);
             result.Add(observation);
@@ -66,6 +68,9 @@ public static class SavedVariablesReader
             return required ? throw new InvalidDataException($"Missing {name}.") : "";
         return value as string ?? throw new InvalidDataException($"Invalid {name}.");
     }
+    private static string? OptionalString(Dictionary<string, object?> table, string name) =>
+        !table.TryGetValue(name, out var value) || value is null ? null :
+        value as string ?? throw new InvalidDataException($"Invalid {name}.");
     private static double Number(Dictionary<string, object?> table, string name) =>
         table.GetValueOrDefault(name) is double value && ObservationRules.Finite(value)
             ? value : throw new InvalidDataException($"Invalid {name}.");

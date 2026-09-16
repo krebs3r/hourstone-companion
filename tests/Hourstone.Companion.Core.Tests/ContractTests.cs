@@ -6,10 +6,12 @@ namespace Hourstone.Companion.Core.Tests;
 
 public sealed class ContractTests
 {
-    [Fact]
-    public void ExactSharedLuaContractFixturesAgree()
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void ExactSharedLuaContractFixturesAgree(int version)
     {
-        var path = Path.Combine(AppContext.BaseDirectory, "Fixtures", "contract-v1.json");
+        var path = Path.Combine(AppContext.BaseDirectory, "Fixtures", $"contract-v{version}.json");
         using var document = JsonDocument.Parse(File.ReadAllText(path));
         foreach (var test in document.RootElement.GetProperty("cases").EnumerateArray())
         {
@@ -17,13 +19,20 @@ public sealed class ContractTests
             var actual = ObservationRules.Merge(items);
             Assert.True(actual.Count == test.GetProperty("expectedCount").GetInt32(), test.GetProperty("name").GetString());
             Assert.Equal(test.GetProperty("expectedSeconds").EnumerateArray().Select(n => n.GetDouble()).Order(), actual.Select(o => o.Seconds).Order());
+            if (test.TryGetProperty("expectedGuilds", out var guilds))
+            {
+                Assert.Equal(guilds.EnumerateArray().Select(n => n.GetString()).Order(StringComparer.Ordinal), actual.Select(o => o.Guild).Order(StringComparer.Ordinal));
+                Assert.Equal(test.GetProperty("expectedGuildUpdatedAts").EnumerateArray().Select(n => n.ValueKind == JsonValueKind.Null ? (double?)null : n.GetDouble()).Order(), actual.Select(o => o.GuildUpdatedAt).Order());
+            }
             if (test.TryGetProperty("expectedNames", out var names)) Assert.Equal(names.EnumerateArray().Select(n => n.GetString()).Order(), actual.Select(o => o.Name).Order());
         }
     }
-    [Fact]
-    public void ExactGoldenSnapshotRoundTripsWithNoLocalPaths()
+    [Theory]
+    [InlineData(1)]
+    [InlineData(2)]
+    public void ExactGoldenSnapshotRoundTripsWithNoLocalPaths(int version)
     {
-        var json = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", "snapshot-v1.json"));
+        var json = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", $"snapshot-v{version}.json"));
         using var document = JsonDocument.Parse(json);
         var snapshot = ObservationRules.ParseSnapshot(json, document.RootElement.GetProperty("groupId").GetString()!);
         var output = ObservationRules.CanonicalSnapshot(snapshot);
@@ -68,9 +77,9 @@ public sealed class ContractTests
     {
         var snapshot = Sample.Snapshot("11111111-1111-1111-1111-111111111111", 1, Sample.Item("hs-test"));
         var json = ObservationRules.CanonicalSnapshot(snapshot);
-        Assert.ThrowsAny<Exception>(() => ObservationRules.ParseSnapshot(json.Replace("\"formatVersion\": 1,", ""), snapshot.GroupId));
-        Assert.ThrowsAny<Exception>(() => ObservationRules.ParseSnapshot(json.Replace("\"formatVersion\": 1,", "\"formatVersion\": 1, \"formatVersion\": 1,"), snapshot.GroupId));
-        Assert.ThrowsAny<Exception>(() => ObservationRules.ParseSnapshot(json.Replace("\"formatVersion\": 1", "\"formatVersion\": 99"), snapshot.GroupId));
+        Assert.ThrowsAny<Exception>(() => ObservationRules.ParseSnapshot(json.Replace("\"formatVersion\": 2,", ""), snapshot.GroupId));
+        Assert.ThrowsAny<Exception>(() => ObservationRules.ParseSnapshot(json.Replace("\"formatVersion\": 2,", "\"formatVersion\": 2, \"formatVersion\": 2,"), snapshot.GroupId));
+        Assert.ThrowsAny<Exception>(() => ObservationRules.ParseSnapshot(json.Replace("\"formatVersion\": 2", "\"formatVersion\": 99"), snapshot.GroupId));
     }
     [Fact]
     public void DataAddonIsPureDataWithoutSavedVariablesAndEscapesStrings()
@@ -97,10 +106,11 @@ internal static class Sample
     {
         var rootId = schema >= 2 ? $"sourceId={DataAddonWriter.Quote(source.SourceId)}," : "";
         var server = schema >= 2 && observation.Confirmed ? $", serverSeconds={observation.ServerSeconds!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}, serverAt={observation.ServerAt!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}" : "";
+        var guild = observation.Guild is null ? "" : $", guild={DataAddonWriter.Quote(observation.Guild)}, guildUpdatedAt={observation.GuildUpdatedAt!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
         return $$"""
             -- synthetic test data only
             HourstoneDB = { version={{schema}}, {{rootId}} characters = {
-              ["{{source.Flavor}}:{{observation.Guid}}"]={ guid={{DataAddonWriter.Quote(observation.Guid)}}, name={{DataAddonWriter.Quote(observation.Name)}}, realm={{DataAddonWriter.Quote(observation.Realm)}}, class="MAGE", flavor={{DataAddonWriter.Quote(source.Flavor)}}, region="eu", level=80, seconds={{observation.Seconds.ToString(System.Globalization.CultureInfo.InvariantCulture)}}, updatedAt={{observation.UpdatedAt.ToString(System.Globalization.CultureInfo.InvariantCulture)}}{{server}} }
+              ["{{source.Flavor}}:{{observation.Guid}}"]={ guid={{DataAddonWriter.Quote(observation.Guid)}}, name={{DataAddonWriter.Quote(observation.Name)}}, realm={{DataAddonWriter.Quote(observation.Realm)}}, class="MAGE", flavor={{DataAddonWriter.Quote(source.Flavor)}}, region="eu", level=80, seconds={{observation.Seconds.ToString(System.Globalization.CultureInfo.InvariantCulture)}}, updatedAt={{observation.UpdatedAt.ToString(System.Globalization.CultureInfo.InvariantCulture)}}{{server}}{{guild}} }
             }, settings={ nested={true,false,nil}, text=[=[literal -- text]=] } }
             """;
     }

@@ -1,22 +1,22 @@
-# Hourstone Companion 0.1.1
+# Hourstone Companion 0.1.2
 
-Settings now show unsaved changes and enable **Save changes** only when needed.
-Dark, light and Windows appearance remain available. Changes take effect after
-saving; failed synchronization does not undo a successful settings save.
+The character list now shows each character's last recorded guild. Search matches
+both character and guild names. Full guild names remain available in tooltips
+when the window is narrow. **No guild** and **Not yet recorded** are distinct,
+localized states.
 
-Window controls have recognizable Windows symbols, visible hover and focus
-states, and a restore symbol when maximized. Maximized windows fit the current
-monitor work area so the footer stays above the taskbar. The footer includes the Hourstone
-heart and author credit. Character and client rows use original game icons.
+Guild updates have their own server timestamp. A guild change or departure can
+update the overview without replacing a newer playtime baseline. Unknown guild
+data never clears a known membership. Received guild information is not
+republished as a local observation.
 
-Client setup reports each account separately: missing or outdated addon, waiting
-for the first in-game save, ready, or unreadable. Sign in to a character with
-Hourstone 0.2.0, then log out or use `/reload`. Restarting the Companion alone
-does not create the addon source identifier. Last valid observations are kept.
+Update the WoW addon to **Hourstone 0.2.1** and the companion to **0.1.2** on every
+PC. Each character needs a login with the updated addon, then logout or `/reload`
+to populate its guild. Offline characters retain their last saved status.
+The version 2 sync format carries guilds; earlier version 1 snapshots and cached
+observations remain readable. Old companion versions cannot read version 2 files
+and retain their last valid received data until updated.
 
-Requires Windows 11 x64 and Hourstone 0.2.0. The first creation of Hourstone_Sync
-requires a complete WoW restart; later data refreshes load on login or reload.
-Existing 0.1.0 settings, device identity and cached observations remain compatible.
-
-Local preview packages are unsigned. Public signed releases still require the
-installation, update and two-device provider checks in Release validation.
+Settings, device identity, selected clients and cached playtime from 0.1.0 and
+0.1.1 remain compatible. Local preview packages are unsigned; public releases
+still require signing and the practical checks in [Release validation](RELEASING.md).

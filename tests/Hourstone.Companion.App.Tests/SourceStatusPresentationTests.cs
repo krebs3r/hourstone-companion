@@ -5,7 +5,7 @@ namespace Hourstone.Companion.App.Tests;
 
 public sealed class SourceStatusPresentationTests
 {
-    private static LocalSourceStatus Status(LocalSourceReadiness readiness, string id = "private-source-id", string flavor = "retail", string account = "TEST_ACCOUNT", string? version = "0.2.0") =>
+    private static LocalSourceStatus Status(LocalSourceReadiness readiness, string id = "private-source-id", string flavor = "retail", string account = "TEST_ACCOUNT", string? version = "0.2.1") =>
         new(id, @"C:\Synthetic\WoW\_retail_", account, flavor, readiness, version);
     private static SourceConfiguration Source(LocalSourceStatus status) => new()
     {
@@ -36,7 +36,7 @@ public sealed class SourceStatusPresentationTests
     public void SetupInstructionsNameTheRequiredAddonAndActualInGameSave(LocalSourceReadiness readiness, bool english)
     {
         var instruction = SourceStatusPresentation.Instruction(Status(readiness, version: "0.1.1"), english);
-        Assert.Contains("0.2.0", instruction); Assert.Contains("WoW", instruction); Assert.Contains("/reload", instruction);
+        Assert.Contains("0.2.1", instruction); Assert.Contains("WoW", instruction); Assert.Contains("/reload", instruction);
         Assert.Contains(english ? "log in with this account" : "logge dich mit diesem Account ein", instruction);
         Assert.Contains(english ? "Restarting the Companion does not replace this step" : "Ein Neustart des Companions ersetzt diesen Schritt nicht", instruction);
         if (readiness == LocalSourceReadiness.AddonOutdated) Assert.Contains("0.1.1", instruction);
@@ -73,7 +73,7 @@ public sealed class SourceStatusPresentationTests
         var status = Status(LocalSourceReadiness.AddonMissing, flavor: "tbc", account: "TBC_ACCOUNT");
         var result = Result([], new SyncIssue("addon_missing", "generic core text", status.SourceId));
         var diagnostics = SourceStatusPresentation.Diagnostics(result, [Source(status)], true);
-        Assert.Contains("TBC Anniversary · TBC_ACCOUNT", diagnostics); Assert.Contains("Hourstone missing", diagnostics); Assert.Contains("0.2.0", diagnostics);
+        Assert.Contains("TBC Anniversary · TBC_ACCOUNT", diagnostics); Assert.Contains("Hourstone missing", diagnostics); Assert.Contains("0.2.1", diagnostics);
         Assert.DoesNotContain("generic core text", diagnostics); Assert.DoesNotContain(status.SourceId, diagnostics);
     }
     [Fact]
