@@ -24,12 +24,23 @@ public sealed record Observation
 
 public sealed record DeviceSnapshot
 {
-    [JsonRequired] public int FormatVersion { get; init; } = 2;
+    [JsonRequired] public int FormatVersion { get; init; } = 3;
     [JsonRequired] public string GroupId { get; init; } = "";
     [JsonRequired] public string DeviceId { get; init; } = "";
     [JsonRequired] public string DeviceName { get; init; } = "";
     [JsonRequired] public long Revision { get; init; }
     [JsonRequired] public List<Observation> Observations { get; init; } = [];
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public List<CharacterVisibility>? Visibility { get; init; }
+}
+
+public sealed record CharacterVisibility
+{
+    [JsonRequired] public string SourceId { get; init; } = "";
+    [JsonRequired] public string Region { get; init; } = "unknown";
+    [JsonRequired] public string Flavor { get; init; } = "";
+    [JsonRequired] public string Guid { get; init; } = "";
+    [JsonRequired] public Dictionary<string, long> Removed { get; init; } = new(StringComparer.Ordinal);
+    [JsonRequired] public Dictionary<string, long> Restored { get; init; } = new(StringComparer.Ordinal);
 }
 
 public sealed record SourceConfiguration

@@ -30,11 +30,12 @@ public sealed class SourceReadinessTests : IDisposable
     [Theory]
     [InlineData(1, LocalSourceReadiness.AwaitingGameSave)]
     [InlineData(2, LocalSourceReadiness.Ready)]
+    [InlineData(3, LocalSourceReadiness.Ready)]
     public async Task SavedVariableSchemasReportWhetherAnInGameSaveIsNeeded(int schema, LocalSourceReadiness expected)
     {
-        var service = Service(); var source = Source(); WriteToc(source, "## Version: 0.2.1\n"); WriteSaved(source, schema); Select(service, source);
+        var service = Service(); var source = Source(); WriteToc(source, "## Version: 0.2.2\n"); WriteSaved(source, schema); Select(service, source);
         var result = await service.SyncNowAsync(); var status = Assert.Single(result.LocalSourceStatuses);
-        Assert.Equal(expected, status.Readiness); Assert.Equal("0.2.1", status.DetectedAddonVersion);
+        Assert.Equal(expected, status.Readiness); Assert.Equal("0.2.2", status.DetectedAddonVersion);
         Assert.Equal(source.SourceId, status.SourceId); Assert.Equal(source.ClientDirectory, status.ClientDirectory);
         Assert.Equal(source.AccountName, status.AccountName); Assert.Equal("retail", status.Flavor);
         Assert.Equal(expected == LocalSourceReadiness.Ready, result.AddonReady);
@@ -56,7 +57,7 @@ public sealed class SourceReadinessTests : IDisposable
         Assert.Equal(LocalSourceReadiness.AddonOutdated, status.Readiness); Assert.Equal("0.1.1", status.DetectedAddonVersion);
         Assert.Contains(result.Issues, issue => issue.Code == "addon_outdated" && issue.SourceId == source.SourceId);
         Assert.Single(service.GetCharacters()); Assert.False(result.AddonReady);
-        WriteToc(source, "## Version: 0.2.1\n"); var upgraded = await service.SyncNowAsync();
+        WriteToc(source, "## Version: 0.2.2\n"); var upgraded = await service.SyncNowAsync();
         Assert.Equal(LocalSourceReadiness.Ready, Assert.Single(upgraded.LocalSourceStatuses).Readiness); Assert.True(upgraded.AddonReady);
     }
     [Fact]
@@ -65,7 +66,7 @@ public sealed class SourceReadinessTests : IDisposable
         var service = Service(); var source = Source(); WriteToc(source, "## Version: 0.1.1\n"); WriteSaved(source, schema: 1); Select(service, source);
         var old = await service.SyncNowAsync(); Assert.Equal(LocalSourceReadiness.AddonOutdated, Assert.Single(old.LocalSourceStatuses).Readiness);
         Assert.DoesNotContain(old.Issues, issue => issue.Code == "source_not_initialized");
-        WriteToc(source, "## Version: 0.2.1\n"); var awaiting = await service.SyncNowAsync();
+        WriteToc(source, "## Version: 0.2.2\n"); var awaiting = await service.SyncNowAsync();
         Assert.Equal(LocalSourceReadiness.AwaitingGameSave, Assert.Single(awaiting.LocalSourceStatuses).Readiness);
         Assert.Contains(awaiting.Issues, issue => issue.Code == "source_not_initialized");
     }
@@ -75,7 +76,7 @@ public sealed class SourceReadinessTests : IDisposable
     [InlineData("nil")]
     public async Task InvalidSourceIdRequiresAGameSaveRatherThanACompanionRestart(string luaId)
     {
-        var service = Service(); var source = Source(); WriteToc(source, "## Version: 0.2.1\n"); WriteSaved(source); Select(service, source);
+        var service = Service(); var source = Source(); WriteToc(source, "## Version: 0.2.2\n"); WriteSaved(source); Select(service, source);
         var lua = File.ReadAllText(source.SavedVariablesPath).Replace("sourceId=\"hs-test\"", "sourceId=" + luaId, StringComparison.Ordinal);
         File.WriteAllText(source.SavedVariablesPath, lua); var result = await service.SyncNowAsync();
         var status = Assert.Single(result.LocalSourceStatuses); Assert.Equal(LocalSourceReadiness.AwaitingGameSave, status.Readiness);
@@ -87,7 +88,7 @@ public sealed class SourceReadinessTests : IDisposable
     [Fact]
     public async Task MissingSavedVariablesWaitForFirstInGameSaveAndRecoverWithActualSourceIdentity()
     {
-        var service = Service(); var pending = Source(id: "pending-source"); WriteToc(pending, "## Version: 0.2.1\n"); Select(service, pending);
+        var service = Service(); var pending = Source(id: "pending-source"); WriteToc(pending, "## Version: 0.2.2\n"); Select(service, pending);
         Assert.Equal(LocalSourceReadiness.AwaitingGameSave, Assert.Single((await service.SyncNowAsync()).LocalSourceStatuses).Readiness);
         var actual = pending with { SourceId = "hs-real-game-source" }; WriteSaved(actual, seconds: 220);
         var ready = await service.SyncNowAsync(); var status = Assert.Single(ready.LocalSourceStatuses);
@@ -99,12 +100,12 @@ public sealed class SourceReadinessTests : IDisposable
     public async Task AccountsWithinTheSameClientHaveIndependentReadinessAndContext()
     {
         var service = Service(); var ready = Source("READY_ACCOUNT", "hs-ready"); var waiting = Source("WAITING_ACCOUNT", "pending-waiting");
-        WriteToc(ready, "## Version: 0.2.1\n"); WriteSaved(ready); WriteSaved(waiting, schema: 1); Select(service, ready, waiting);
+        WriteToc(ready, "## Version: 0.2.2\n"); WriteSaved(ready); WriteSaved(waiting, schema: 1); Select(service, ready, waiting);
         var result = await service.SyncNowAsync(); Assert.Equal(2, result.LocalSourceStatuses.Count);
         var readyStatus = result.LocalSourceStatuses.Single(item => item.AccountName == "READY_ACCOUNT");
         var waitingStatus = result.LocalSourceStatuses.Single(item => item.AccountName == "WAITING_ACCOUNT");
         Assert.Equal(LocalSourceReadiness.Ready, readyStatus.Readiness); Assert.Equal(LocalSourceReadiness.AwaitingGameSave, waitingStatus.Readiness);
-        Assert.Equal("0.2.1", readyStatus.DetectedAddonVersion); Assert.Equal("0.2.1", waitingStatus.DetectedAddonVersion);
+        Assert.Equal("0.2.2", readyStatus.DetectedAddonVersion); Assert.Equal("0.2.2", waitingStatus.DetectedAddonVersion);
         Assert.Contains("WAITING_ACCOUNT", waitingStatus.Message); Assert.Single(service.GetCharacters()); Assert.False(result.AddonReady);
         Select(service, ready, waiting with { Enabled = false });
         Assert.Equal("READY_ACCOUNT", Assert.Single((await service.SyncNowAsync()).LocalSourceStatuses).AccountName);
@@ -112,10 +113,10 @@ public sealed class SourceReadinessTests : IDisposable
     [Fact]
     public async Task SourceReadFailureRetainsLastGoodDataAndDetectedVersion()
     {
-        var service = Service(); var source = Source(); WriteToc(source, "## Version: 0.2.1\n"); WriteSaved(source, seconds: 420); Select(service, source);
+        var service = Service(); var source = Source(); WriteToc(source, "## Version: 0.2.2\n"); WriteSaved(source, seconds: 420); Select(service, source);
         await service.SyncNowAsync(); File.WriteAllText(source.SavedVariablesPath, "HourstoneDB = { characters = {");
         var failed = await service.SyncNowAsync(); var status = Assert.Single(failed.LocalSourceStatuses);
-        Assert.Equal(LocalSourceReadiness.ReadFailed, status.Readiness); Assert.Equal("0.2.1", status.DetectedAddonVersion);
+        Assert.Equal(LocalSourceReadiness.ReadFailed, status.Readiness); Assert.Equal("0.2.2", status.DetectedAddonVersion);
         Assert.Contains(source.AccountName, status.Message); Assert.Contains(failed.Issues, issue => issue.Code == "source_read_failed");
         Assert.Equal(420, Assert.Single(service.GetCharacters()).Seconds); Assert.False(failed.AddonReady);
         WriteSaved(source, seconds: 520); Assert.Equal(LocalSourceReadiness.Ready, Assert.Single((await service.SyncNowAsync()).LocalSourceStatuses).Readiness);
@@ -124,10 +125,11 @@ public sealed class SourceReadinessTests : IDisposable
     [Theory]
     [InlineData("## Version: 0.2.0\n", LocalSourceReadiness.AddonOutdated, "0.2.0")]
     [InlineData("## Title: Hourstone\n", LocalSourceReadiness.AddonOutdated, null)]
+    [InlineData("## Version: 0.2.1\n", LocalSourceReadiness.AddonOutdated, "0.2.1")]
     [InlineData("## Version: unreleased\n", LocalSourceReadiness.AddonOutdated, "unreleased")]
-    [InlineData("## Version: 0.2.1-beta\n", LocalSourceReadiness.AddonOutdated, "0.2.1-beta")]
-    [InlineData("  ## Version: v0.2.1\n", LocalSourceReadiness.Ready, "v0.2.1")]
-    [InlineData("## Version: 0.2.1\n## Version: 9.0.0\n", LocalSourceReadiness.ReadFailed, null)]
+    [InlineData("## Version: 0.2.2-beta\n", LocalSourceReadiness.AddonOutdated, "0.2.2-beta")]
+    [InlineData("  ## Version: v0.2.2\n", LocalSourceReadiness.Ready, "v0.2.2")]
+    [InlineData("## Version: 0.2.2\n## Version: 9.0.0\n", LocalSourceReadiness.ReadFailed, null)]
     public void VersionMetadataIsReadConservatively(string toc, LocalSourceReadiness expected, string? version)
     {
         var source = Source(); WriteToc(source, toc); var status = AddonReadiness.Inspect(source);
@@ -137,7 +139,7 @@ public sealed class SourceReadinessTests : IDisposable
     public async Task OversizedOrInvalidUtf8TocReportsReadFailureWithoutLosingSourceData()
     {
         var service = Service(); var source = Source(); WriteSaved(source); Select(service, source);
-        WriteToc(source, "## Version: 0.2.1\n" + new string('x', AddonReadiness.MaximumTocBytes));
+        WriteToc(source, "## Version: 0.2.2\n" + new string('x', AddonReadiness.MaximumTocBytes));
         var oversized = await service.SyncNowAsync(); Assert.Equal(LocalSourceReadiness.ReadFailed, Assert.Single(oversized.LocalSourceStatuses).Readiness);
         Assert.Contains(oversized.Issues, issue => issue.Code == "addon_read_failed"); Assert.Single(service.GetCharacters());
         File.WriteAllBytes(source.AddonTocPath, [0xFF, 0xFE, 0xFA]);
@@ -150,7 +152,7 @@ public sealed class SourceReadinessTests : IDisposable
     {
         var service = Service(); var source = Source(id: "hs-anniversary");
         source = source with { ClientDirectory = Path.Combine(source.WoWRoot, clientName), Flavor = "tbc" };
-        WriteToc(source, "## Version: 0.2.1\n"); Directory.CreateDirectory(Path.GetDirectoryName(source.SavedVariablesPath)!);
+        WriteToc(source, "## Version: 0.2.2\n"); Directory.CreateDirectory(Path.GetDirectoryName(source.SavedVariablesPath)!);
         File.WriteAllText(source.SavedVariablesPath, "HourstoneDB={version=2,sourceId=\"hs-anniversary\",characters={}}");
         var discovered = Assert.Single(service.DiscoverSources([source.WoWRoot]));
         Assert.Equal("tbc", discovered.Flavor); Assert.Equal("hs-anniversary", discovered.SourceId); Assert.Equal(source.ClientDirectory, discovered.ClientDirectory);

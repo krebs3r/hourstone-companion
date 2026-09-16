@@ -198,7 +198,7 @@ public partial class MainWindow : Window
         try
         {
             var result = await service.SyncNowAsync(stopping.Token);
-            vm.SetObservations(service.GetCharacters());
+            vm.SetObservations(service.GetCharacters(), service.GetRemovedCharacters());
             vm.Status = vm.Text(result.Success ? (result.SourceCount > 0 ? "Active" : "Unconfigured") : "Attention");
             vm.LastSync = result.AddonReady ? (vm.English ? "Ready for WoW" : "Für WoW bereitgestellt") + " · " + result.CompletedAt.ToLocalTime().ToString("HH:mm") : "";
             DiagnosticsText.Text = SourceStatusPresentation.Diagnostics(result, service.GetConfiguration().Sources, vm.English);
@@ -212,6 +212,45 @@ public partial class MainWindow : Window
         finally { lastScan = DateTimeOffset.UtcNow; changed = DateTimeOffset.MaxValue; busy = false; vm.IsIdle = true; if (quitPending) Quit(); }
     }
     async void SyncNow_Click(object sender, RoutedEventArgs e) { if (demo) Notify(vm.English ? "Preview with sample data." : "Vorschau mit Beispieldaten."); else await ScanAsync(); }
+    void ToggleRemoved_Click(object sender, RoutedEventArgs e) => vm.ShowRemoved = !vm.ShowRemoved;
+    async void CharacterAction_Click(object sender, RoutedEventArgs e)
+    {
+        if (!vm.CanChangeCharacter || vm.SelectedRow is not { } row) return;
+        bool remove = !vm.ShowRemoved;
+        if (remove)
+        {
+            modalOpen = true;
+            try
+            {
+                if (MessageBox.Show(this, string.Format(vm.Culture, vm.Text("RemoveConfirmation"), row.Name + " · " + row.Client + " · " + row.Value.Realm),
+                    vm.Text("RemoveCharacter"), MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) != MessageBoxResult.Yes) return;
+            }
+            finally { modalOpen = false; LastInteraction = DateTimeOffset.UtcNow; }
+        }
+        try
+        {
+            if (demo)
+            {
+                var visible = vm.VisibleObservations.ToList(); var removed = vm.RemovedObservations.ToList();
+                (remove ? visible : removed).RemoveAll(o => ObservationRules.Identity(o) == ObservationRules.Identity(row.Value));
+                (remove ? removed : visible).Add(row.Value); vm.SetObservations(visible, removed);
+            }
+            else if (service != null)
+            {
+                service.SetCharacterRemoved(row.Value, remove);
+                vm.SetObservations(service.GetCharacters(), service.GetRemovedCharacters());
+                await ScanAsync();
+            }
+        }
+        catch (Exception ex) when (IsSettingsPersistenceError(ex) || ex is InvalidDataException or System.Text.Json.JsonException)
+        { Notify(vm.Text("VisibilityFailed")); DiagnosticsText.Text = ex.Message; }
+    }
+    public void SetRemovedPreview()
+    {
+        if (!demo) return;
+        var all = MainViewModel.DemoData(); vm.SetObservations(all.Skip(2), all.Take(2)); vm.ShowRemoved = true;
+        vm.SelectedRow = vm.Rows.FirstOrDefault();
+    }
     void Hours_Click(object sender, RoutedEventArgs e) => vm.SetHours(true);
     void Days_Click(object sender, RoutedEventArgs e) => vm.SetHours(false);
     void RebuildWatchers()

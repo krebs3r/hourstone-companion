@@ -17,7 +17,7 @@ public sealed class SyncIntegrationTests : IDisposable
         var client = Path.Combine(root, device, "WoW", "_retail_");
         var source = Sample.Source(sourceId) with { WoWRoot = Path.Combine(root, device, "WoW"), ClientDirectory = client };
         Directory.CreateDirectory(Path.GetDirectoryName(source.SavedVariablesPath)!); File.WriteAllText(source.SavedVariablesPath, Sample.Lua(source, Sample.Item(sourceId, seconds, guid)));
-        Directory.CreateDirectory(Path.GetDirectoryName(source.AddonTocPath)!); File.WriteAllText(source.AddonTocPath, "## Version: 0.2.1\n");
+        Directory.CreateDirectory(Path.GetDirectoryName(source.AddonTocPath)!); File.WriteAllText(source.AddonTocPath, "## Version: 0.2.2\n");
         service.SaveConfiguration(service.GetConfiguration() with { Sources = [source] }); return source;
     }
     private static DeviceSnapshot ReadPublished(CompanionService service)
@@ -203,7 +203,7 @@ public sealed class SyncIntegrationTests : IDisposable
         await b.SyncNowAsync(); await a.SyncNowAsync();
         var row = Assert.Single(a.GetCharacters()); Assert.Equal(220, row.Seconds); Assert.Equal(local.ServerAt, row.ServerAt); Assert.Equal("Neue Gilde", row.Guild);
         Assert.Equal("Old guild", Assert.Single(ReadPublished(a).Observations).Guild);
-        Assert.Equal("Neue Gilde", Assert.Single(ReadPublished(b).Observations).Guild); Assert.Equal(2, ReadPublished(a).FormatVersion);
+        Assert.Equal("Neue Gilde", Assert.Single(ReadPublished(b).Observations).Guild); Assert.Equal(3, ReadPublished(a).FormatVersion);
         Assert.Contains("guild=\"Neue Gilde\"", File.ReadAllText(Path.Combine(sourceA.DataAddonDirectory, "Data.lua")));
         remote = remote with { Guild = "", GuildUpdatedAt = 1700000400 };
         File.WriteAllText(sourceB.SavedVariablesPath, Sample.Lua(sourceB, remote));
@@ -225,7 +225,7 @@ public sealed class SyncIntegrationTests : IDisposable
         var config = a.GetConfiguration();
         var remote = Sample.Snapshot("11111111-1111-1111-1111-111111111111", 5, Sample.Item("hs-peer", 500, "Player-2-CD")) with { FormatVersion = 1, GroupId = config.GroupId! };
         var path = Path.Combine(config.CloudFolder!, "peer.json"); File.WriteAllText(path, ObservationRules.CanonicalSnapshot(remote));
-        await a.SyncNowAsync(); var legacyOwn = ReadPublished(a) with { FormatVersion = 1 };
+        await a.SyncNowAsync(); var legacyOwn = ReadPublished(a) with { FormatVersion = 1, Visibility = null };
         var legacyJson = ObservationRules.CanonicalSnapshot(legacyOwn); Assert.DoesNotContain("guild", legacyJson);
         a.Dispose(); services.Remove(a);
         using (var connection = new Microsoft.Data.Sqlite.SqliteConnection("Data Source=" + Path.Combine(root, "A", "app", "state.db")))
@@ -236,7 +236,7 @@ public sealed class SyncIntegrationTests : IDisposable
         }
         File.WriteAllText(Path.Combine(config.CloudFolder!, config.DeviceId + ".json"), legacyJson);
         a = Service("A"); var result = await a.SyncNowAsync(); Assert.True(result.Success, string.Join("; ", result.Issues));
-        var upgraded = ReadPublished(a); Assert.Equal(2, upgraded.FormatVersion); Assert.Equal(legacyOwn.Revision + 1, upgraded.Revision); Assert.Equal(config.DeviceId, upgraded.DeviceId);
+        var upgraded = ReadPublished(a); Assert.Equal(3, upgraded.FormatVersion); Assert.Equal(legacyOwn.Revision + 1, upgraded.Revision); Assert.Equal(config.DeviceId, upgraded.DeviceId);
         Assert.Equal(source.SourceId, Assert.Single(a.GetConfiguration().Sources).SourceId); Assert.Equal(2, a.GetCharacters().Count);
         Assert.Null(a.GetCharacters().Single(o => o.SourceId == "hs-peer").Guild);
         Assert.True((await a.SyncNowAsync()).Success); Assert.Equal(upgraded.Revision, ReadPublished(a).Revision);

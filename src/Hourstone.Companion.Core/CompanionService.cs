@@ -7,8 +7,12 @@ public sealed class CompanionService : IDisposable
     private readonly object gate = new();
     private readonly SemaphoreSlim syncGate = new(1, 1);
     private readonly CompanionStore store;
+    // A fresh runtime actor prevents a cloned/restored database from reusing an acknowledged remove operation.
+    private readonly string visibilityActor = Guid.NewGuid().ToString("D");
     private CompanionConfiguration configuration;
     private IReadOnlyList<Observation> characters = [];
+    private IReadOnlyList<Observation> allCharacters = [];
+    private IReadOnlyList<Observation> removedCharacters = [];
     private IReadOnlyList<DeviceStatus> devices = [];
     private SyncResult lastResult = SyncResult.Empty;
     private bool disposed;
@@ -39,6 +43,22 @@ public sealed class CompanionService : IDisposable
     public IReadOnlyList<DiscoveredSource> DiscoverSources(IEnumerable<string> wowRoots) => SourceDiscovery.Discover(wowRoots, GetConfiguration().DeviceId);
     public IReadOnlyList<DeviceStatus> GetDevices() { lock (gate) return devices.ToArray(); }
     public IReadOnlyList<Observation> GetCharacters() { lock (gate) return characters.ToArray(); }
+    public IReadOnlyList<Observation> GetRemovedCharacters() { lock (gate) return removedCharacters.ToArray(); }
+    public void SetCharacterRemoved(Observation observation, bool removed)
+    {
+        lock (gate)
+        {
+            ThrowIfDisposed(); ObservationRules.Validate(observation);
+            var identity = ObservationRules.Identity(observation);
+            var known = allCharacters.SingleOrDefault(item => ObservationRules.Identity(item) == identity)
+                ?? throw new InvalidDataException("The character is not in the current local or received data.");
+            var history = store.ReadVisibility();
+            var current = history.SingleOrDefault(state => VisibilityRules.Identity(state) == identity) ?? VisibilityRules.FromObservation(known);
+            var changed = removed ? VisibilityRules.Remove(current, visibilityActor) : VisibilityRules.Restore(current);
+            var merged = VisibilityRules.Merge(history.Append(changed));
+            store.Transaction(() => store.WriteVisibility(merged)); RefreshViews();
+        }
+    }
     public Task JoinSyncFolderAsync(string folder, CancellationToken cancellationToken = default) => Task.Run(() =>
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -115,15 +135,21 @@ public sealed class CompanionService : IDisposable
                 else
                 {
                     var effective = source;
+                    var nextConfiguration = configuration;
                     if (source.SourceId != parsed.SourceId)
                     {
                         if (configuration.Sources.Any(s => s.SourceId == parsed.SourceId && s != source)) throw new InvalidDataException("The same logical source is configured more than once.");
                         effective = source with { SourceId = parsed.SourceId };
-                        configuration = configuration with { Sources = configuration.Sources.Select(s => s == source ? effective : s).ToList() };
-                        PersistConfiguration(); status = status with { SourceId = effective.SourceId };
+                        nextConfiguration = configuration with { Sources = configuration.Sources.Select(s => s == source ? effective : s).ToList() };
                     }
                     // Metadata diagnoses do not discard or block otherwise valid saved observations.
-                    store.WriteSource(effective.SourceId, parsed.Observations);
+                    var merged = VisibilityRules.Merge(store.ReadVisibility().Concat(parsed.Visibility));
+                    store.Transaction(() =>
+                    {
+                        store.WriteSource(effective.SourceId, parsed.Observations); store.WriteVisibility(merged);
+                        if (nextConfiguration != configuration) store.Set("configuration", JsonSerializer.Serialize(nextConfiguration, JsonContract.Options));
+                    });
+                    configuration = nextConfiguration; status = status with { SourceId = effective.SourceId };
                 }
             }
             catch (Exception ex) when (IsRecoverable(ex))
@@ -146,6 +172,8 @@ public sealed class CompanionService : IDisposable
                 var group = ReadGroup(configuration.CloudFolder);
                 if (group.GroupId != groupId) throw new InvalidDataException("The selected sync folder now belongs to a different group.");
                 canPublish = ReadCloudSnapshots(configuration.CloudFolder, local, issues, cancellationToken);
+                // Accepted control state is deliberately relayed in this cycle; received playtime never enters own.
+                local = EnsureLocalSnapshot(own, groupId);
                 if (canPublish) { SafeFiles.AtomicWriteOwned(configuration.CloudFolder, configuration.DeviceId + ".json", ObservationRules.CanonicalSnapshot(local)); cloudPublished = true; }
             }
             catch (Exception ex) when (IsRecoverable(ex))
@@ -164,7 +192,7 @@ public sealed class CompanionService : IDisposable
                 var sources = selected.Where(s => StringComparer.OrdinalIgnoreCase.Equals(Path.GetFullPath(s.ClientDirectory), client)).Select(s => s.SourceId);
                 // Do not recreate an old installation that the user has removed.
                 if (!currentClients.Contains(client, StringComparer.OrdinalIgnoreCase) && !Directory.Exists(Path.Combine(client, "Interface", "AddOns", "Hourstone_Sync"))) continue;
-                DataAddonWriter.Write(client, sources, characters);
+                DataAddonWriter.Write(client, sources, allCharacters, VisibilityFor(allCharacters));
             }
             catch (Exception ex) when (IsRecoverable(ex)) { managedClients.Add(client); issues.Add(new SyncIssue("addon_write_failed", "Sync-Datenaddon konnte nicht aktualisiert werden: " + ex.Message)); }
         }
@@ -176,7 +204,8 @@ public sealed class CompanionService : IDisposable
     private DeviceSnapshot EnsureLocalSnapshot(List<Observation> own, string groupId)
     {
         var current = store.ReadSnapshots(groupId).SingleOrDefault(s => s.Snapshot.DeviceId == configuration.DeviceId)?.Snapshot;
-        var candidate = new DeviceSnapshot { GroupId = groupId, DeviceId = configuration.DeviceId, DeviceName = configuration.DeviceName, Revision = current?.Revision ?? 1, Observations = own };
+        var remote = store.ReadSnapshots(groupId).Where(item => item.Snapshot.DeviceId != configuration.DeviceId).SelectMany(item => item.Snapshot.Observations);
+        var candidate = new DeviceSnapshot { GroupId = groupId, DeviceId = configuration.DeviceId, DeviceName = configuration.DeviceName, Revision = current?.Revision ?? 1, Observations = own, Visibility = VisibilityFor(own.Concat(remote)).ToList() };
         ObservationRules.ValidateSnapshot(candidate, groupId);
         if (current is not null && ObservationRules.CanonicalSnapshot(candidate) == ObservationRules.CanonicalSnapshot(current)) return current;
         var lastRevision = long.TryParse(store.Get("revision"), out var prior) ? prior : 0;
@@ -219,6 +248,7 @@ public sealed class CompanionService : IDisposable
             }
         }
         var existing = store.ReadSnapshots(local.GroupId).ToDictionary(s => s.Snapshot.DeviceId, StringComparer.Ordinal);
+        var accepted = new List<(DeviceSnapshot Snapshot, string Hash)>();
         foreach (var device in received.GroupBy(s => s.Snapshot.DeviceId, StringComparer.Ordinal))
         {
             var conflict = device.GroupBy(s => s.Snapshot.Revision).Any(revision => revision.Select(s => s.Hash).Distinct(StringComparer.Ordinal).Count() > 1);
@@ -237,8 +267,24 @@ public sealed class CompanionService : IDisposable
                 { publish = false; issues.Add(new SyncIssue("device_identity_conflict", "Der Cloud-Ordner enthält eine neuere Revision dieses Geräts. Die Geräteidentität muss geprüft werden.")); }
                 continue; // Received observations are never promoted into this device's own contribution.
             }
-            if (cached is null || newest.Snapshot.Revision > cached.Snapshot.Revision) store.WriteSnapshot(newest.Snapshot, newest.Hash);
+            if (cached is null || newest.Snapshot.Revision > cached.Snapshot.Revision) accepted.Add(newest);
         }
+        // Validate each cumulative addition before committing; one excessive peer must not block unrelated devices.
+        var merged = store.ReadVisibility(); var validated = new List<(DeviceSnapshot Snapshot, string Hash)>();
+        foreach (var item in accepted.OrderBy(item => item.Snapshot.DeviceId, StringComparer.Ordinal))
+        {
+            try
+            {
+                merged = VisibilityRules.Merge(merged.Concat(item.Snapshot.Visibility ?? [])); validated.Add(item);
+            }
+            catch (InvalidDataException ex)
+            { issues.Add(new SyncIssue("snapshot_rejected", "Geräte-Snapshot überschreitet die gemeinsamen Steuerzustandsgrenzen und wurde nicht übernommen: " + ex.Message)); }
+        }
+        store.Transaction(() =>
+        {
+            foreach (var item in validated) store.WriteSnapshot(item.Snapshot, item.Hash);
+            store.WriteVisibility(merged);
+        });
         return publish;
     }
     private void RefreshViews()
@@ -246,10 +292,20 @@ public sealed class CompanionService : IDisposable
         var selected = configuration.Sources.Where(s => s.Enabled).ToList(); var own = selected.SelectMany(s => store.ReadSource(s.SourceId)).ToList();
         var groupId = configuration.GroupId ?? Guid.Empty.ToString("D"); var cached = store.ReadSnapshots(groupId);
         var remote = cached.Where(s => s.Snapshot.DeviceId != configuration.DeviceId).ToArray();
-        characters = ObservationRules.Merge(own.Concat(remote.SelectMany(s => s.Snapshot.Observations)));
+        var visibility = VisibilityRules.Merge(store.ReadVisibility().Concat(cached.SelectMany(item => item.Snapshot.Visibility ?? [])));
+        store.WriteVisibility(visibility);
+        var hidden = visibility.Where(VisibilityRules.IsRemoved).Select(VisibilityRules.Identity).ToHashSet(StringComparer.Ordinal);
+        allCharacters = ObservationRules.Merge(own.Concat(remote.SelectMany(s => s.Snapshot.Observations)));
+        characters = allCharacters.Where(item => !hidden.Contains(ObservationRules.Identity(item))).ToArray();
+        removedCharacters = allCharacters.Where(item => hidden.Contains(ObservationRules.Identity(item))).ToArray();
         var localRevision = long.TryParse(store.Get("revision"), out var revision) ? revision : 0;
-        devices = new[] { new DeviceStatus(configuration.DeviceId, configuration.DeviceName, localRevision, ObservationRules.Merge(own).Count, DateTimeOffset.UtcNow, true) }
-            .Concat(remote.Select(s => new DeviceStatus(s.Snapshot.DeviceId, s.Snapshot.DeviceName, s.Snapshot.Revision, ObservationRules.Merge(s.Snapshot.Observations).Count, s.LastSeen, false))).ToArray();
+        devices = new[] { new DeviceStatus(configuration.DeviceId, configuration.DeviceName, localRevision, ObservationRules.Merge(own).Count(item => !hidden.Contains(ObservationRules.Identity(item))), DateTimeOffset.UtcNow, true) }
+            .Concat(remote.Select(s => new DeviceStatus(s.Snapshot.DeviceId, s.Snapshot.DeviceName, s.Snapshot.Revision, ObservationRules.Merge(s.Snapshot.Observations).Count(item => !hidden.Contains(ObservationRules.Identity(item))), s.LastSeen, false))).ToArray();
+    }
+    private IReadOnlyList<CharacterVisibility> VisibilityFor(IEnumerable<Observation> observations)
+    {
+        var known = observations.Select(ObservationRules.Identity).ToHashSet(StringComparer.Ordinal);
+        return store.ReadVisibility().Where(state => known.Contains(VisibilityRules.Identity(state))).ToArray();
     }
     private void PersistConfiguration() => store.Set("configuration", JsonSerializer.Serialize(configuration, JsonContract.Options));
     private static void ValidateConfiguration(CompanionConfiguration value)

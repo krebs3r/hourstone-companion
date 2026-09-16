@@ -38,6 +38,7 @@ public static class Program
                 if (args.Contains("--all-classes")) ((MainViewModel)window.DataContext).SetObservations(MainViewModel.AllClassDemoData());
                 if (args.Contains("--settings-draft")) window.SetSettingsDraftPreview();
                 if (args.Contains("--long-names")) window.SetLongNamePreview();
+                if (args.Contains("--removed")) window.SetRemovedPreview();
                 window.SetRenderPage(Option("--page", "overview"));
                 window.Loaded += (_, _) => window.Dispatcher.InvokeAsync(() =>
                 {

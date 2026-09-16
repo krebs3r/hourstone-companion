@@ -79,7 +79,7 @@ public sealed class GuildTests
     {
         var item = Sample.Item("hs-a") with { Guild = "L'été \\ \"Dämmerung\"", GuildUpdatedAt = 1700000400 };
         var data = DataAddonWriter.BuildData(["hs-a"], [item]);
-        Assert.Contains("formatVersion = 2", data);
+        Assert.Contains("formatVersion = 3", data);
         Assert.Contains("guild=\"L'été \\\\ \\\"Dämmerung\\\"\"", data);
         Assert.Contains("guildUpdatedAt=1700000400", data);
         Assert.Equal("Hourstone Companion managed data addon v1", DataAddonWriter.OwnershipMarker);

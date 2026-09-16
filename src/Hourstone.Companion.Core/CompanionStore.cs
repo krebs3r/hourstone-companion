@@ -27,6 +27,13 @@ internal sealed class CompanionStore : IDisposable
         return json is null ? [] : JsonSerializer.Deserialize<List<Observation>>(json, JsonContract.Options) ?? [];
     }
     public void WriteSource(string sourceId, IReadOnlyList<Observation> values) => Execute("INSERT INTO sources(source_id,json) VALUES($id,$json) ON CONFLICT(source_id) DO UPDATE SET json=excluded.json", ("$id", sourceId), ("$json", JsonSerializer.Serialize(values, JsonContract.Options)));
+    public IReadOnlyList<CharacterVisibility> ReadVisibility()
+    {
+        var json = Get("visibility");
+        return json is null ? [] : VisibilityRules.Merge(JsonSerializer.Deserialize<List<CharacterVisibility>>(json, JsonContract.Options)
+            ?? throw new InvalidDataException("Invalid local visibility state."));
+    }
+    public void WriteVisibility(IEnumerable<CharacterVisibility> states) => Set("visibility", JsonSerializer.Serialize(VisibilityRules.Merge(states), JsonContract.Options));
     public void RetainSources(IEnumerable<string> sourceIds)
     {
         var keep = sourceIds.ToHashSet(StringComparer.Ordinal); var obsolete = new List<string>();

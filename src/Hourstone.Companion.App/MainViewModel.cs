@@ -28,6 +28,14 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ["CheckNow"] = ("Jetzt prüfen", "Check now"),
         ["SavedTime"] = ("Gespeicherte Spielzeit", "Saved playtime"),
         ["Characters"] = ("Charaktere", "Characters"),
+        ["RemovedCharacters"] = ("Entfernte Charaktere", "Removed characters"),
+        ["BackToCharacters"] = ("Zur Charakterliste", "Back to characters"),
+        ["RemoveCharacter"] = ("Aus Übersicht entfernen", "Remove from overview"),
+        ["RestoreCharacter"] = ("Wiederherstellen", "Restore character"),
+        ["RemovedEmpty"] = ("Keine entfernten Charaktere. Deine Spielzeit bleibt bei einer Entfernung gespeichert.", "No removed characters. Removing a character keeps its saved playtime."),
+        ["RemovalHint"] = ("Entfernte Charaktere zählen nicht zur Gesamtzeit. „Wiederherstellen“ oder ein neuer Login nach dem Empfang der Entfernung zeigt sie wieder an. Ein /reload allein genügt dafür nicht.", "Removed characters are excluded from totals. Restore them here, or log in again after the addon receives the removal. A /reload alone does not restore them."),
+        ["RemoveConfirmation"] = ("{0} aus der Übersicht entfernen?\n\nDer Eintrag zählt danach nicht mehr zur Gesamtspielzeit. Der WoW-Charakter und seine gespeicherte Spielzeit bleiben erhalten.\n\nDu kannst ihn unter „Entfernte Charaktere“ wiederherstellen. Ein neuer Login stellt ihn ebenfalls wieder her, sobald die Entfernung im Addon angekommen ist.", "Remove {0} from the overview?\n\nThe entry will no longer count towards total playtime. The WoW character and its saved playtime are kept.\n\nYou can restore it under Removed characters. A new login also restores it once the addon has received the removal."),
+        ["VisibilityFailed"] = ("Die Charakterliste konnte nicht geändert werden. Bitte erneut versuchen.", "The character list could not be changed. Please try again."),
         ["Search"] = ("Charakter oder Gilde suchen …", "Search characters or guilds …"),
         ["Hours"] = ("Stunden", "Hours"),
         ["Days"] = ("Tage + Std.", "Days + hours"),
@@ -37,7 +45,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ["ClientsIntro"] = ("Wähle die lokalen WoW-Installationen und Accounts, deren Spielzeit du zusammen anzeigen möchtest.", "Select the local WoW installations and accounts you want to include."),
         ["AddWoW"] = ("WoW-Ordner hinzufügen", "Add WoW folder"),
         ["Discover"] = ("Installationen suchen", "Find installations"),
-        ["FirstSave"] = ("Hourstone 0.2.1 oder neuer muss einmal im jeweiligen Client geladen und durch Ausloggen oder /reload gespeichert werden. Originaldateien bleiben unter der Kontrolle von WoW.", "Load Hourstone 0.2.1 or later in each client, then log out or /reload once. WoW remains in control of its original files."),
+        ["FirstSave"] = ("Hourstone 0.2.2 oder neuer muss einmal im jeweiligen Client geladen und durch Ausloggen oder /reload gespeichert werden. Originaldateien bleiben unter der Kontrolle von WoW.", "Load Hourstone 0.2.2 or later in each client, then log out or /reload once. WoW remains in control of its original files."),
         ["SyncIntro"] = ("Verbinde deine PCs über einen gemeinsamen Dropbox- oder OneDrive-Ordner. Der Companion benötigt dafür kein eigenes Konto.", "Connect your PCs through a shared Dropbox or OneDrive folder. No Companion account is required."),
         ["Folder"] = ("Gemeinsamer Syncordner", "Shared sync folder"),
         ["ChooseFolder"] = ("Ordner auswählen", "Choose folder"),
@@ -91,24 +99,40 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public bool Demo { get; }
     public string BuildLabel => "v" + typeof(MainViewModel).Assembly.GetName().Version!.ToString(3);
     public string PreviewLabel => Demo ? (English ? "Preview · sample data" : "Vorschau · Beispieldaten") : "";
-    List<Observation> observations = [];
+    List<Observation> observations = [], removedObservations = [];
+    IEnumerable<Observation> DisplayObservations => showRemoved ? removedObservations : observations;
+    bool showRemoved;
+    CharacterRow? selectedRow;
+    public CharacterRow? SelectedRow { get => selectedRow; set { selectedRow = value; Changed(); Changed(nameof(CanChangeCharacter)); } }
+    public bool CanChangeCharacter => IsIdle && SelectedRow != null;
+    public bool ShowRemoved
+    {
+        get => showRemoved;
+        set { if (showRemoved == value) return; showRemoved = value; RebuildFilters(); Changed(); Changed(nameof(ListTitle)); Changed(nameof(ToggleRemovedLabel)); Changed(nameof(CharacterActionLabel)); }
+    }
+    public string ListTitle => Text(showRemoved ? "RemovedCharacters" : "Characters");
+    public string ToggleRemovedLabel => showRemoved ? Text("BackToCharacters") : Text("RemovedCharacters") + " (" + removedObservations.Count + ")";
+    public string CharacterActionLabel => Text(showRemoved ? "RestoreCharacter" : "RemoveCharacter");
+    public string EmptyTitle => Text(showRemoved ? "RemovedCharacters" : "EmptyTitle");
+    public IReadOnlyList<Observation> VisibleObservations => observations.ToArray();
+    public IReadOnlyList<Observation> RemovedObservations => removedObservations.ToArray();
     public ObservableCollection<CharacterRow> Rows { get; } = [];
     public ObservableCollection<string> Clients { get; } = [];
     public ObservableCollection<string> Realms { get; } = [];
     string search = "", selectedClient = "", selectedRealm = "";
     bool hours = true, idle = true;
-    public bool IsIdle { get => idle; set { idle = value; Changed(); } }
+    public bool IsIdle { get => idle; set { idle = value; Changed(); Changed(nameof(CanChangeCharacter)); } }
     public string Search { get => search; set { search = value; RefreshRows(); Changed(); Changed(nameof(SearchHintVisibility)); } }
     public string SelectedClient { get => selectedClient; set { selectedClient = value; RefreshRows(); } }
     public string SelectedRealm { get => selectedRealm; set { selectedRealm = value; RefreshRows(); } }
     public Visibility SearchHintVisibility => string.IsNullOrEmpty(Search) ? Visibility.Visible : Visibility.Collapsed;
     public Visibility EmptyVisibility => Rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-    public string EmptyMessage => Text(observations.Count == 0 ? "EmptyText" : "NoMatches");
+    public string EmptyMessage => Text(showRemoved ? (removedObservations.Count == 0 ? "RemovedEmpty" : "NoMatches") : observations.Count == 0 ? "EmptyText" : "NoMatches");
     public string TotalTime => (observations.Sum(x => x.Seconds) / 3600).ToString("N0", Culture) + (English ? " hrs" : " Std.");
     public string TotalDays { get { var h = (long)(observations.Sum(x => x.Seconds) / 3600); return English ? $"{(h / 24).ToString("N0", Culture)} days · {h % 24} hours" : $"{(h / 24).ToString("N0", Culture)} Tage · {h % 24} Stunden"; } }
     public int CharacterCount => observations.Count;
     public int ClientCount => observations.Select(x => x.Flavor).Distinct().Count();
-    public string RowSummary => $"{Rows.Count} {Text("Characters")} · {Rows.Select(x => x.Client).Distinct().Count()} Clients";
+    public string RowSummary => showRemoved ? $"{Rows.Count} {Text("RemovedCharacters")}" : $"{Rows.Count} {Text("Characters")} · {Rows.Select(x => x.Client).Distinct().Count()} Clients";
     string status = "", lastSync = "";
     public string Status { get => status; set { status = value; Changed(); } }
     public string LastSync { get => lastSync; set { lastSync = value; Changed(); } }
@@ -129,24 +153,32 @@ public sealed class MainViewModel : INotifyPropertyChanged
         English = english; Changed(nameof(T));
         if (statusKey != null) Status = Text(statusKey);
         LastSync = LastSync.Replace(ready, Text("Ready"), StringComparison.Ordinal);
-        SetObservations(observations.ToArray()); Changed(nameof(BuildLabel)); Changed(nameof(PreviewLabel));
+        SetObservations(observations.ToArray(), removedObservations.ToArray()); Changed(nameof(BuildLabel)); Changed(nameof(PreviewLabel));
     }
     public void SetHours(bool value) { hours = value; RefreshRows(); Changed(nameof(HoursBackground)); Changed(nameof(HoursForeground)); Changed(nameof(DaysBackground)); Changed(nameof(DaysForeground)); }
     public void NotifyDevice() => Changed(nameof(DeviceName));
-    public void SetObservations(IEnumerable<Observation> values)
+    public void SetObservations(IEnumerable<Observation> values, IEnumerable<Observation>? removedValues = null)
     {
-        observations = values.ToList();
+        observations = values.ToList(); removedObservations = removedValues?.ToList() ?? [];
+        RebuildFilters();
+        Changed(nameof(TotalTime)); Changed(nameof(TotalDays)); Changed(nameof(CharacterCount)); Changed(nameof(ClientCount));
+        Changed(nameof(ListTitle)); Changed(nameof(ToggleRemovedLabel)); Changed(nameof(CharacterActionLabel));
+    }
+    void RebuildFilters()
+    {
         var oldClient = selectedClient; var oldRealm = selectedRealm;
-        Clients.Clear(); Clients.Add(Text("AllClients")); foreach (var c in observations.Select(x => ClientName(x.Flavor)).Distinct().Order()) Clients.Add(c);
-        Realms.Clear(); Realms.Add(Text("AllRealms")); foreach (var r in observations.Select(x => x.Realm).Distinct().Order()) Realms.Add(r);
+        Clients.Clear(); Clients.Add(Text("AllClients")); foreach (var c in DisplayObservations.Select(x => ClientName(x.Flavor)).Distinct().Order()) Clients.Add(c);
+        Realms.Clear(); Realms.Add(Text("AllRealms")); foreach (var r in DisplayObservations.Select(x => x.Realm).Distinct().Order()) Realms.Add(r);
         selectedClient = Clients.Contains(oldClient) ? oldClient : Clients[0]; selectedRealm = Realms.Contains(oldRealm) ? oldRealm : Realms[0];
         Changed(nameof(SelectedClient)); Changed(nameof(SelectedRealm)); RefreshRows();
         Changed(nameof(TotalTime)); Changed(nameof(TotalDays)); Changed(nameof(CharacterCount)); Changed(nameof(ClientCount));
     }
     void RefreshRows()
     {
-        Rows.Clear(); foreach (var o in observations.Where(x => (x.Name.Contains(search, StringComparison.CurrentCultureIgnoreCase) || (x.Guild?.Contains(search, StringComparison.CurrentCultureIgnoreCase) ?? false)) && (string.IsNullOrEmpty(selectedClient) || selectedClient == Text("AllClients") || ClientName(x.Flavor) == selectedClient) && (string.IsNullOrEmpty(selectedRealm) || selectedRealm == Text("AllRealms") || x.Realm == selectedRealm)).OrderByDescending(x => x.Seconds).ThenBy(x => x.Name)) Rows.Add(new(o, this, hours));
-        Changed(nameof(EmptyVisibility)); Changed(nameof(EmptyMessage)); Changed(nameof(RowSummary));
+        var selectedIdentity = SelectedRow is null ? null : ObservationRules.Identity(SelectedRow.Value);
+        Rows.Clear(); foreach (var o in DisplayObservations.Where(x => (x.Name.Contains(search, StringComparison.CurrentCultureIgnoreCase) || (x.Guild?.Contains(search, StringComparison.CurrentCultureIgnoreCase) ?? false)) && (string.IsNullOrEmpty(selectedClient) || selectedClient == Text("AllClients") || ClientName(x.Flavor) == selectedClient) && (string.IsNullOrEmpty(selectedRealm) || selectedRealm == Text("AllRealms") || x.Realm == selectedRealm)).OrderByDescending(x => x.Seconds).ThenBy(x => x.Name)) Rows.Add(new(o, this, hours));
+        SelectedRow = Rows.FirstOrDefault(row => ObservationRules.Identity(row.Value) == selectedIdentity);
+        Changed(nameof(EmptyVisibility)); Changed(nameof(EmptyMessage)); Changed(nameof(EmptyTitle)); Changed(nameof(RowSummary));
     }
     public static string ClientName(string flavor) => flavor switch { "retail" => "Retail", "mists" => "Mists Classic", "tbc" => "TBC Anniversary", "era" => "Classic Era", _ => flavor };
     public static List<Observation> AllClassDemoData()

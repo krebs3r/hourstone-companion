@@ -1,22 +1,24 @@
-# Hourstone Companion 0.1.2
+# Hourstone Companion 0.1.3
 
-The character list now shows each character's last recorded guild. Search matches
-both character and guild names. Full guild names remain available in tooltips
-when the window is narrow. **No guild** and **Not yet recorded** are distinct,
-localized states.
+Characters can be removed from the overview without deleting their saved playtime
+or their WoW character. Select an entry and choose **Remove from overview**;
+confirmation explains the effect on totals. **Removed characters** lists hidden
+entries and provides **Restore character**. Both lists retain search and filters.
+Selected rows now keep readable theme colors in dark and light appearance.
 
-Guild updates have their own server timestamp. A guild change or departure can
-update the overview without replacing a newer playtime baseline. Unknown guild
-data never clears a known membership. Received guild information is not
-republished as a local observation.
+Removing or restoring an entry synchronizes across personal devices. A fresh WoW
+login also restores it after the addon has received the removal. Reloads, ongoing
+sessions and stale files do not restore it. An unseen concurrent removal wins;
+receive it first, then restore explicitly or perform a new login. All controls
+preserve their acknowledgment history and do not depend on PC clocks.
 
-Update the WoW addon to **Hourstone 0.2.1** and the companion to **0.1.2** on every
-PC. Each character needs a login with the updated addon, then logout or `/reload`
-to populate its guild. Offline characters retain their last saved status.
-The version 2 sync format carries guilds; earlier version 1 snapshots and cached
-observations remain readable. Old companion versions cannot read version 2 files
-and retain their last valid received data until updated.
+Update all PCs to Companion **0.1.3** and all selected WoW clients to Hourstone
+**0.2.2**. Snapshot format 3 and SavedVariables schema 3 introduce the controls;
+older supported data migrates without losing settings or measurements. Old app
+versions cannot consume the new format and must be upgraded together.
 
-Settings, device identity, selected clients and cached playtime from 0.1.0 and
-0.1.1 remain compatible. Local preview packages are unsigned; public releases
-still require signing and the practical checks in [Release validation](RELEASING.md).
+Automated coverage includes merge order and concurrency, stale and malformed
+inputs, restart persistence, transport filtering and removed-list totals. Render
+checks cover dark/light/system appearance, compact windows and scaling. Actual
+WoW logins and Dropbox/OneDrive exchange between two physical PCs remain practical
+release checks. Local test packages are unsigned; public releases require signing.

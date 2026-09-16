@@ -45,6 +45,12 @@ be provisioned separately; the repository does not contain one.
 - Check guild join, leave and pending guild information on every client family, then
   exchange changes between PCs without altering the selected playtime baseline.
 - Upgrade a version 1 sync cache and verify that unchanged legacy snapshots remain accepted.
+- Remove a character in each app, verify excluded totals and explicit restoration,
+  then verify restoration on a fresh login after the addon has received the removal.
+- Confirm reloads, zone changes, old files and a running session do not restore it.
+- Test simultaneous offline removals/restorations and copied local data, plus
+  source deselection and switching to a different group without unrelated controls.
+- Upgrade an existing 0.1.2 installation, preserving settings and measurements.
 - Exercise Retail, Mists Classic, TBC Anniversary and Classic Era with selected accounts.
 - Confirm the first data-addon installation requires a WoW restart and subsequent data
   refreshes load on login/reload without modifying SavedVariables.

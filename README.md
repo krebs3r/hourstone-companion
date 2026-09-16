@@ -13,13 +13,14 @@ Live WoW clients and two-device provider synchronization require practical valid
 ## What it does
 
 - Character overview with guilds, total playtime, character/guild search, client and realm filters.
+- Reversible removal from the overview, synchronized across your own PCs.
 - Local, read-only ingestion of selected Hourstone account data.
 - Optional device synchronization using one snapshot per computer and no companion server.
 - A generated data addon makes the combined overview available in WoW.
 - Windows tray operation, configurable autostart, German/English and dark/light/system themes.
 - Clear save feedback, per-account setup guidance and original class and game icons.
 
-It supports **Windows 11 x64** and Hourstone **0.2.1 or later** with Retail, Mists Classic,
+It supports **Windows 11 x64** and Hourstone **0.2.2 or later** with Retail, Mists Classic,
 TBC Anniversary and Classic Era. The WoW addon also works independently.
 
 ## Setup
@@ -36,8 +37,24 @@ Guilds appear beneath each character. **No guild** is a confirmed state;
 **Not yet recorded** means that character still needs a login with Hourstone 0.2.1
 or later, followed by logout or `/reload`. The last saved guild is shown while
 the character is offline. Guild changes synchronize independently of playtime.
-Update the companion to 0.1.2 or later on every PC before exchanging protocol 2
+Update the companion to 0.1.3 or later on every PC before exchanging protocol 3
 snapshots. Earlier snapshots and existing settings and databases remain readable.
+
+Select a character and choose **Remove from overview** to exclude it from the
+list and its total, after confirmation. The WoW character and saved playtime are
+kept. **Removed characters** opens the list with **Restore character**.
+
+![Removed characters with sample data](docs/assets/removed-characters.png)
+
+![Removed characters with sample data](docs/assets/removed-characters.png)
+
+A fresh WoW login also restores the character, once the removal has reached that
+addon. A `/reload`, app restart or old file from an offline laptop does not restore
+it. Removing the character you are currently playing keeps it hidden until the
+next login; time measurement continues. Both apps exchange these decisions
+alongside saved measurements. Characters deleted inside WoW remain in Hourstone
+until you remove their entries; renaming a character with the same GUID preserves
+its entry and time.
 
 In **Settings**, changing the device name, appearance, language or autostart enables
 **Save changes**. The highlighted button applies the choices; the unsaved status
@@ -46,7 +63,7 @@ clears after a successful save. Closing to the tray keeps the current draft.
 ![Settings with unsaved changes in light appearance](docs/assets/settings.png)
 
 If an account is waiting for its first save, log in **inside that WoW client** with
-Hourstone 0.2.1, then log out or run `/reload`. Restarting the Companion alone is
+Hourstone 0.2.2, then log out or run `/reload`. Restarting the Companion alone is
 not enough. The Clients page identifies each account that still needs this step.
 
 WoW must save, the provider must transport the files, and the target client must
@@ -55,7 +72,9 @@ that a cloud upload has finished or another computer is online.
 
 The companion never overwrites WoW SavedVariables and never executes their Lua
 contents. It keeps its SQLite database, settings and device identity locally.
-Only selected character observations enter the provider folder.
+Only selected character observations and the matching removal/restoration controls
+enter the provider folder. Learned controls stay locally after disconnecting;
+unrelated old-group identities are not published into a new group.
 
 ## Build and test
 

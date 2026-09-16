@@ -65,10 +65,22 @@ public static class ObservationRules
     }
     public static void ValidateSnapshot(DeviceSnapshot snapshot, string groupId)
     {
-        if (snapshot is null || snapshot.FormatVersion is not (1 or 2) || !System.Guid.TryParseExact(snapshot.GroupId, "D", out _) || snapshot.GroupId != groupId ||
+        if (snapshot is null || snapshot.FormatVersion is not (1 or 2 or 3) || !System.Guid.TryParseExact(snapshot.GroupId, "D", out _) || snapshot.GroupId != groupId ||
             !System.Guid.TryParseExact(snapshot.DeviceId, "D", out _) || !ValidText(snapshot.DeviceName, 128) || snapshot.Revision <= 0 ||
             snapshot.Observations is null || snapshot.Observations.Count > MaximumObservations)
             throw new InvalidDataException("Unsupported or invalid device snapshot.");
+        if (snapshot.FormatVersion == 3 ? snapshot.Visibility is null : snapshot.Visibility is not null)
+            throw new InvalidDataException("Visibility requires snapshot format 3 and a complete visibility list.");
+        if (snapshot.Visibility is not null)
+        {
+            if (snapshot.Visibility.Count > VisibilityRules.MaximumStates) throw new InvalidDataException("Too many visibility states.");
+            var identities = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var state in snapshot.Visibility)
+            {
+                VisibilityRules.Validate(state);
+                if (!identities.Add(VisibilityRules.Identity(state))) throw new InvalidDataException("Duplicate visibility identity in device snapshot.");
+            }
+        }
         var keys = new HashSet<string>(StringComparer.Ordinal);
         foreach (var observation in snapshot.Observations)
         {
@@ -85,7 +97,10 @@ public static class ObservationRules
         ValidateSnapshot(snapshot, groupId); return snapshot;
     }
     public static string CanonicalSnapshot(DeviceSnapshot snapshot) => JsonSerializer.Serialize(snapshot with
-    { Observations = snapshot.Observations.OrderBy(o => o.SourceId, StringComparer.Ordinal).ThenBy(Identity, StringComparer.Ordinal).ToList() }, JsonContract.Options);
+    {
+        Observations = snapshot.Observations.OrderBy(o => o.SourceId, StringComparer.Ordinal).ThenBy(Identity, StringComparer.Ordinal).ToList(),
+        Visibility = snapshot.Visibility is null ? null : VisibilityRules.Merge(snapshot.Visibility).ToList()
+    }, JsonContract.Options);
     internal static void RejectDuplicateJsonProperties(string json)
     {
         using var document = JsonDocument.Parse(json, new JsonDocumentOptions { MaxDepth = 16 });

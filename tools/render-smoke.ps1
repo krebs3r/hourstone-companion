@@ -39,6 +39,10 @@ if ($Extended) {
         }
     }
     foreach ($theme in @('dark', 'light')) {
+        foreach ($scale in @(1, 1.5, 2)) {
+            Invoke-RenderCase -Name "removed-$theme-$scale" -Theme $theme -Scale $scale -ExtraArguments @('--removed')
+        }
+        Invoke-RenderCase -Name "removed-compact-$theme" -Theme $theme -Scale 1 -Width 960 -Height 600 -ExtraArguments @('--removed', '--english')
         Invoke-RenderCase -Name "classes-$theme" -Theme $theme -Scale 1 -Height 1490 -ExtraArguments @('--all-classes')
         Invoke-RenderCase -Name "compact-$theme" -Theme $theme -Scale 1 -Width 960 -Height 600
         Invoke-RenderCase -Name "long-names-$theme" -Theme $theme -Scale 1 -Width 1100 -Height 760 -ExtraArguments @('--long-names', '--english')

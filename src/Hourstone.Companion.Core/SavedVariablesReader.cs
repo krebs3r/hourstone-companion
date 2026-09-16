@@ -10,8 +10,11 @@ public static class SavedVariablesReader
     public static ParsedSavedVariables Read(string text, SourceConfiguration source)
     {
         var root = new LiteralParser(text).Parse();
-        if (!root.TryGetValue("version", out var schema) || schema is not double version || version is not (1 or 2))
-            throw new InvalidDataException("Unsupported Hourstone SavedVariables schema (supported: 1 and 2).");
+        if (!root.TryGetValue("version", out var schema) || schema is not double version || version is not (1 or 2 or 3))
+            throw new InvalidDataException("Unsupported Hourstone SavedVariables schema (supported: 1, 2 and 3).");
+        if (version < 3 && root.GetValueOrDefault("visibility") is not null)
+            throw new InvalidDataException("Visibility requires SavedVariables schema 3.");
+        var visibility = version == 3 ? ReadVisibility(root.GetValueOrDefault("visibility")) : [];
         var sourceId = root.GetValueOrDefault("sourceId") as string ?? "";
         if (!ObservationRules.ValidSourceId(sourceId)) sourceId = ""; // The addon repairs this on its next in-game save.
         var effectiveId = sourceId.Length > 0 ? sourceId : source.SourceId;
@@ -59,7 +62,40 @@ public static class SavedVariablesReader
             ObservationRules.Validate(observation);
             result.Add(observation);
         }
-        return new ParsedSavedVariables((int)version, sourceId.Length > 0 ? sourceId : null, ObservationRules.Merge(result));
+        return new ParsedSavedVariables((int)version, sourceId.Length > 0 ? sourceId : null, ObservationRules.Merge(result)) { Visibility = visibility };
+    }
+
+    private static IReadOnlyList<CharacterVisibility> ReadVisibility(object? value)
+    {
+        if (value is not Dictionary<string, object?> list || list.Count > VisibilityRules.MaximumStates)
+            throw new InvalidDataException("SavedVariables schema 3 must contain a bounded visibility list.");
+        var states = new List<CharacterVisibility>();
+        for (var index = 1; index <= list.Count; index++)
+        {
+            if (list.GetValueOrDefault(index.ToString(CultureInfo.InvariantCulture)) is not Dictionary<string, object?> row)
+                throw new InvalidDataException("Visibility must be a contiguous list of state tables.");
+            var state = new CharacterVisibility
+            {
+                SourceId = String(row, "sourceId"), Region = String(row, "region"), Flavor = String(row, "flavor"), Guid = String(row, "guid"),
+                Removed = ReadSequences(row.GetValueOrDefault("removed")), Restored = ReadSequences(row.GetValueOrDefault("restored"))
+            };
+            VisibilityRules.Validate(state); states.Add(state);
+        }
+        return VisibilityRules.Merge(states);
+    }
+
+    private static Dictionary<string, long> ReadSequences(object? value)
+    {
+        if (value is not Dictionary<string, object?> map || map.Count > VisibilityRules.MaximumActors)
+            throw new InvalidDataException("Visibility requires bounded actor maps.");
+        var result = new Dictionary<string, long>(StringComparer.Ordinal);
+        foreach (var (actor, raw) in map)
+        {
+            if (!ObservationRules.ValidSourceId(actor) || raw is not double sequence || !ObservationRules.Finite(sequence) || sequence < 1 || sequence != Math.Truncate(sequence))
+                throw new InvalidDataException("Invalid visibility actor or sequence.");
+            result.Add(actor, (long)sequence);
+        }
+        return result;
     }
 
     private static string String(Dictionary<string, object?> table, string name, bool required = true)
@@ -212,4 +248,7 @@ public static class SavedVariablesReader
     }
 }
 
-public sealed record ParsedSavedVariables(int SchemaVersion, string? SourceId, IReadOnlyList<Observation> Observations);
+public sealed record ParsedSavedVariables(int SchemaVersion, string? SourceId, IReadOnlyList<Observation> Observations)
+{
+    public IReadOnlyList<CharacterVisibility> Visibility { get; init; } = [];
+}

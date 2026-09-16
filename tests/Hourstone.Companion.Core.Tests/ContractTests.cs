@@ -9,6 +9,7 @@ public sealed class ContractTests
     [Theory]
     [InlineData(1)]
     [InlineData(2)]
+    [InlineData(3)]
     public void ExactSharedLuaContractFixturesAgree(int version)
     {
         var path = Path.Combine(AppContext.BaseDirectory, "Fixtures", $"contract-v{version}.json");
@@ -30,6 +31,7 @@ public sealed class ContractTests
     [Theory]
     [InlineData(1)]
     [InlineData(2)]
+    [InlineData(3)]
     public void ExactGoldenSnapshotRoundTripsWithNoLocalPaths(int version)
     {
         var json = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "Fixtures", $"snapshot-v{version}.json"));
@@ -101,15 +103,16 @@ internal static class Sample
     public static Observation Item(string sourceId, double seconds = 120, string guid = "Player-1-AB") => new()
     { SourceId = sourceId, Region = "eu", Flavor = "retail", Guid = guid, Name = "Testheld", Realm = "Testrealm", Class = "MAGE", Level = 80, Seconds = seconds, UpdatedAt = 1700000030, ServerSeconds = 100, ServerAt = 1700000000 };
     public static DeviceSnapshot Snapshot(string deviceId, long revision, params Observation[] observations) => new()
-    { GroupId = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", DeviceId = deviceId, DeviceName = "Test PC", Revision = revision, Observations = [.. observations] };
+    { FormatVersion = 2, GroupId = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", DeviceId = deviceId, DeviceName = "Test PC", Revision = revision, Observations = [.. observations] };
     public static string Lua(SourceConfiguration source, Observation observation, int schema = 2)
     {
         var rootId = schema >= 2 ? $"sourceId={DataAddonWriter.Quote(source.SourceId)}," : "";
         var server = schema >= 2 && observation.Confirmed ? $", serverSeconds={observation.ServerSeconds!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}, serverAt={observation.ServerAt!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}" : "";
         var guild = observation.Guild is null ? "" : $", guild={DataAddonWriter.Quote(observation.Guild)}, guildUpdatedAt={observation.GuildUpdatedAt!.Value.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
+        var visibility = schema >= 3 ? "visibility={}, " : "";
         return $$"""
             -- synthetic test data only
-            HourstoneDB = { version={{schema}}, {{rootId}} characters = {
+            HourstoneDB = { version={{schema}}, {{visibility}}{{rootId}} characters = {
               ["{{source.Flavor}}:{{observation.Guid}}"]={ guid={{DataAddonWriter.Quote(observation.Guid)}}, name={{DataAddonWriter.Quote(observation.Name)}}, realm={{DataAddonWriter.Quote(observation.Realm)}}, class="MAGE", flavor={{DataAddonWriter.Quote(source.Flavor)}}, region="eu", level=80, seconds={{observation.Seconds.ToString(System.Globalization.CultureInfo.InvariantCulture)}}, updatedAt={{observation.UpdatedAt.ToString(System.Globalization.CultureInfo.InvariantCulture)}}{{server}}{{guild}} }
             }, settings={ nested={true,false,nil}, text=[=[literal -- text]=] } }
             """;

@@ -186,7 +186,11 @@
                   </Viewbox>
                 </Border>
               </Grid>
-              <TextBlock Grid.Row="2" Text="{Binding T[Characters]}" FontSize="24" FontWeight="Bold" VerticalAlignment="Center" Margin="0,7,0,0" />
+              <Grid Grid.Row="2" Margin="0,7,0,0">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <TextBlock Text="{Binding ListTitle}" FontSize="24" FontWeight="Bold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip="{Binding T[RemovalHint]}" />
+                <Button x:Name="RemovedCharactersButton" Grid.Column="1" Content="{Binding ToggleRemovedLabel}" Click="ToggleRemoved_Click" Padding="12,5" VerticalAlignment="Center" Margin="12,0,0,0" />
+              </Grid>
               <Grid Grid.Row="3">
                 <Grid.ColumnDefinitions>
                   <ColumnDefinition Width="1.7*" />
@@ -217,7 +221,7 @@
                     <RowDefinition Height="*" />
                     <RowDefinition Height="40" />
                   </Grid.RowDefinitions>
-                  <DataGrid x:Name="CharacterGrid" ItemsSource="{Binding Rows}" RowHeight="64" SelectionMode="Single" CanUserSortColumns="True">
+                  <DataGrid x:Name="CharacterGrid" ItemsSource="{Binding Rows}" SelectedItem="{Binding SelectedRow}" RowHeight="64" SelectionMode="Single" CanUserSortColumns="True">
                     <DataGrid.Columns>
                       <DataGridTemplateColumn Header="Charakter" Width="2.1*" SortMemberPath="Name">
                         <DataGridTemplateColumn.CellTemplate>
@@ -254,11 +258,15 @@
                     </DataGrid.Columns>
                   </DataGrid>
                   <StackPanel x:Name="EmptyState" Visibility="{Binding EmptyVisibility}" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="550">
-                    <TextBlock Text="{Binding T[EmptyTitle]}" FontSize="24" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                    <TextBlock Text="{Binding EmptyTitle}" FontSize="24" FontWeight="SemiBold" HorizontalAlignment="Center" />
                     <TextBlock Text="{Binding EmptyMessage}" Foreground="{DynamicResource Muted}" TextWrapping="Wrap" TextAlignment="Center" Margin="16" />
                   </StackPanel>
                   <Border Grid.Row="1" BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0" Padding="20,0">
-                    <TextBlock Text="{Binding RowSummary}" Foreground="{DynamicResource Muted}" FontSize="14" VerticalAlignment="Center" />
+                    <Grid>
+                      <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                      <TextBlock Text="{Binding RowSummary}" Foreground="{DynamicResource Muted}" FontSize="14" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip="{Binding T[RemovalHint]}" />
+                      <Button x:Name="CharacterActionButton" Grid.Column="1" Content="{Binding CharacterActionLabel}" Click="CharacterAction_Click" IsEnabled="{Binding CanChangeCharacter}" ToolTip="{Binding T[RemovalHint]}" Padding="10,4" Margin="12,3,0,3" />
+                    </Grid>
                   </Border>
                 </Grid>
               </Border>

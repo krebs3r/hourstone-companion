@@ -5,7 +5,7 @@ namespace Hourstone.Companion.App.Tests;
 
 public sealed class SourceStatusPresentationTests
 {
-    private static LocalSourceStatus Status(LocalSourceReadiness readiness, string id = "private-source-id", string flavor = "retail", string account = "TEST_ACCOUNT", string? version = "0.2.1") =>
+    private static LocalSourceStatus Status(LocalSourceReadiness readiness, string id = "private-source-id", string flavor = "retail", string account = "TEST_ACCOUNT", string? version = "0.2.2") =>
         new(id, @"C:\Synthetic\WoW\_retail_", account, flavor, readiness, version);
     private static SourceConfiguration Source(LocalSourceStatus status) => new()
     {
@@ -36,7 +36,7 @@ public sealed class SourceStatusPresentationTests
     public void SetupInstructionsNameTheRequiredAddonAndActualInGameSave(LocalSourceReadiness readiness, bool english)
     {
         var instruction = SourceStatusPresentation.Instruction(Status(readiness, version: "0.1.1"), english);
-        Assert.Contains("0.2.1", instruction); Assert.Contains("WoW", instruction); Assert.Contains("/reload", instruction);
+        Assert.Contains("0.2.2", instruction); Assert.Contains("WoW", instruction); Assert.Contains("/reload", instruction);
         Assert.Contains(english ? "log in with this account" : "logge dich mit diesem Account ein", instruction);
         Assert.Contains(english ? "Restarting the Companion does not replace this step" : "Ein Neustart des Companions ersetzt diesen Schritt nicht", instruction);
         if (readiness == LocalSourceReadiness.AddonOutdated) Assert.Contains("0.1.1", instruction);
@@ -59,7 +59,7 @@ public sealed class SourceStatusPresentationTests
     [Fact]
     public void ReadErrorsRetainCodeAndTechnicalDetailsAlongsideFriendlyContext()
     {
-        var status = Status(LocalSourceReadiness.ReadFailed, account: "LOCKED_ACCOUNT", version: "0.2.1");
+        var status = Status(LocalSourceReadiness.ReadFailed, account: "LOCKED_ACCOUNT", version: "0.2.2");
         const string detail = "IOException: The process cannot access Hourstone.lua because another process is using it.";
         var result = Result([status], new SyncIssue("source_read_failed", detail, status.SourceId));
         var diagnostics = SourceStatusPresentation.Diagnostics(result, [Source(status)], true);
@@ -73,7 +73,7 @@ public sealed class SourceStatusPresentationTests
         var status = Status(LocalSourceReadiness.AddonMissing, flavor: "tbc", account: "TBC_ACCOUNT");
         var result = Result([], new SyncIssue("addon_missing", "generic core text", status.SourceId));
         var diagnostics = SourceStatusPresentation.Diagnostics(result, [Source(status)], true);
-        Assert.Contains("TBC Anniversary · TBC_ACCOUNT", diagnostics); Assert.Contains("Hourstone missing", diagnostics); Assert.Contains("0.2.1", diagnostics);
+        Assert.Contains("TBC Anniversary · TBC_ACCOUNT", diagnostics); Assert.Contains("Hourstone missing", diagnostics); Assert.Contains("0.2.2", diagnostics);
         Assert.DoesNotContain("generic core text", diagnostics); Assert.DoesNotContain(status.SourceId, diagnostics);
     }
     [Fact]
@@ -90,9 +90,9 @@ public sealed class SourceStatusPresentationTests
     public void UnconfiguredAndReadyStatesAreDistinguished(bool english)
     {
         Assert.Equal(english ? "No local clients configured yet." : "Noch keine lokalen Clients eingerichtet.", SourceStatusPresentation.Diagnostics(SyncResult.Empty, [], english));
-        var status = Status(LocalSourceReadiness.Ready, account: "READY_ACCOUNT", version: "0.2.1");
+        var status = Status(LocalSourceReadiness.Ready, account: "READY_ACCOUNT", version: "0.2.2");
         var ready = SourceStatusPresentation.Diagnostics(Result([status]), [Source(status)], english);
-        Assert.Contains("Retail · READY_ACCOUNT", ready); Assert.Contains(english ? "Ready" : "Bereit", ready); Assert.Contains("0.2.1", ready);
+        Assert.Contains("Retail · READY_ACCOUNT", ready); Assert.Contains(english ? "Ready" : "Bereit", ready); Assert.Contains("0.2.2", ready);
         Assert.DoesNotContain(english ? "No local clients" : "Noch keine lokalen Clients", ready);
         Assert.Equal(english ? "No check has run yet." : "Es wurde noch keine Prüfung durchgeführt.", SourceStatusPresentation.Diagnostics(SyncResult.Empty, [Source(status)], english));
     }
