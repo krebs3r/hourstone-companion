@@ -10,7 +10,8 @@ from `krebs3r/hourstone-companion`; addon releases have their own version series
   SHA-256, PNG structure and dimensions against `docs/assets-manifest.json`.
 - Locked solution restore, Release build and core/conformance tests.
 - Dark/light render smoke checks at 100%, 150% and 200%; validation CI also renders
-  system theme, settings, all classes, long names and compact layouts.
+  system theme, settings, all classes, long names, compact layouts, selected rows
+  and addon acquisition states. Footer bounds and full-row selection are checked.
 - Repository privacy guard across the current tree and newly introduced commit blobs.
 - Self-contained win-x64 packaging, package content allowlist and checksums.
 - Valid Authenticode signatures for the installer and executable payloads.
@@ -50,7 +51,12 @@ be provisioned separately; the repository does not contain one.
 - Confirm reloads, zone changes, old files and a running session do not restore it.
 - Test simultaneous offline removals/restorations and copied local data, plus
   source deselection and switching to a different group without unrelated controls.
-- Upgrade an existing 0.1.2 installation, preserving settings and measurements.
+- Upgrade an existing 0.1.3 installation, preserving settings and measurements.
+- Verify CurseForge and both GitHub links open the correct default-browser pages.
+- Check mouse and keyboard selection in both character lists, including sorting
+  and moving focus to an action without losing the full-row underline.
+- Confirm Hourstone 0.2.2 or later is publicly available on CurseForge before a
+  public companion tag; a GitHub release or pending upload alone is insufficient.
 - Exercise Retail, Mists Classic, TBC Anniversary and Classic Era with selected accounts.
 - Confirm the first data-addon installation requires a WoW restart and subsequent data
   refreshes load on login/reload without modifying SavedVariables.

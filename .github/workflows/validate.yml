@@ -38,7 +38,7 @@ jobs:
         run: dotnet build Hourstone.Companion.slnx -c Release --no-restore
       - name: Test core and application
         run: dotnet test Hourstone.Companion.slnx -c Release --no-build --logger trx --results-directory artifacts/test-results
-      - name: Render themes, settings, icons and compact windows
+      - name: Render themes, links, source states and full-row selection
         run: ./tools/render-smoke.ps1 -Extended
       - name: Verify unsigned local packaging
         run: ./tools/package.ps1 -Unsigned
@@ -49,6 +49,7 @@ jobs:
           name: windows-validation
           path: |
             artifacts/renders/*.png
+            artifacts/renders/*.checks.json
             artifacts/package-renders/*.png
             artifacts/portable-renders/*.png
             artifacts/test-results/*.trx

@@ -25,13 +25,25 @@ TBC Anniversary and Classic Era. The WoW addon also works independently.
 
 ## Setup
 
-1. Install or update [Hourstone](https://github.com/krebs3r/hourstone-azeroth-hours).
-   Log in with each account and log out or reload once so the addon saves its source identifier.
-2. Start the companion and select your WoW installations and account sources.
+1. Use **Download addon on CurseForge** on the **Clients** page, or open
+   [Hourstone on CurseForge](https://www.curseforge.com/wow/addons/hourstone-azeroth-hours). Install or update to 0.2.2 or later.
+   Enable Hourstone, log in with each account and log out or run `/reload` once so the addon saves its source identifier.
+2. Choose **Find installations** and select your WoW installations and account sources.
 3. Restart WoW once after the companion first creates the `Hourstone_Sync` addon.
    Later updates become available on login or reload.
 4. For multiple computers, select the same provider folder on each computer and
    keep it available offline in Dropbox or OneDrive.
+
+The download button opens the official CurseForge page in your default browser;
+installation is handled there. It is available before you configure any sources,
+and missing or outdated addons show the same action beside their setup instructions.
+**Addon on GitHub** links to the addon source; **GitHub** in the footer opens this
+companion repository. The footer also shows the version and **with ♥ by krebs3r**.
+
+![Addon setup with a synthetic source](docs/assets/clients.png)
+
+The companion requires a compatible addon release. Check the version on CurseForge:
+a published Hourstone 0.1.x package cannot provide companion synchronization.
 
 Guilds appear beneath each character. **No guild** is a confirmed state;
 **Not yet recorded** means that character still needs a login with Hourstone 0.2.1
@@ -43,8 +55,6 @@ snapshots. Earlier snapshots and existing settings and databases remain readable
 Select a character and choose **Remove from overview** to exclude it from the
 list and its total, after confirmation. The WoW character and saved playtime are
 kept. **Removed characters** opens the list with **Restore character**.
-
-![Removed characters with sample data](docs/assets/removed-characters.png)
 
 ![Removed characters with sample data](docs/assets/removed-characters.png)
 
@@ -93,7 +103,7 @@ pwsh -File tools/package.ps1 -Unsigned
 Unsigned packages are for local testing. End-user builds include the .NET runtime;
 users do not need an SDK. See [Development](docs/DEVELOPMENT.md),
 [Release validation](docs/RELEASING.md) and the
-[pinned synchronization contract](docs/sync-protocol-v2.md).
+[pinned synchronization contract](docs/sync-protocol-v3.md).
 
 ## Project boundaries
 

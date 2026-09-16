@@ -1,24 +1,23 @@
-# Hourstone Companion 0.1.3
+# Hourstone Companion 0.1.4
 
-Characters can be removed from the overview without deleting their saved playtime
-or their WoW character. Select an entry and choose **Remove from overview**;
-confirmation explains the effect on totals. **Removed characters** lists hidden
-entries and provides **Restore character**. Both lists retain search and filters.
-Selected rows now keep readable theme colors in dark and light appearance.
+The Clients page now provides **Download addon on CurseForge** before any account
+is configured, along with an **Addon on GitHub** source link. Missing and outdated
+addons have an install or update action beside their setup instructions. Links
+open the Windows default browser; browser-start failures produce a localized hint.
 
-Removing or restoring an entry synchronizes across personal devices. A fresh WoW
-login also restores it after the addon has received the removal. Reloads, ongoing
-sessions and stale files do not restore it. An unseen concurrent removal wins;
-receive it first, then restore explicitly or perform a new login. All controls
-preserve their acknowledgment history and do not depend on PC clocks.
+The footer contains the companion GitHub link, version and **with ♥ by krebs3r**.
+It stays readable in compact windows while the left-hand hint truncates with a
+full tooltip. Selecting any character cell highlights the whole row with one cyan
+underline. Selection remains visible when moving to an action, and keyboard focus
+has an additional outline in both tracked and removed-character views.
 
-Update all PCs to Companion **0.1.3** and all selected WoW clients to Hourstone
-**0.2.2**. Snapshot format 3 and SavedVariables schema 3 introduce the controls;
-older supported data migrates without losing settings or measurements. Old app
-versions cannot consume the new format and must be upgraded together.
+This update keeps protocol 3 and requires Hourstone **0.2.2 or later**. It preserves
+existing settings, measurements and removal/restoration controls. Public release
+requires a compatible addon to be publicly available on CurseForge as well as the
+existing signing and practical validation checks. Local test packages are unsigned.
 
-Automated coverage includes merge order and concurrency, stale and malformed
-inputs, restart persistence, transport filtering and removed-list totals. Render
-checks cover dark/light/system appearance, compact windows and scaling. Actual
-WoW logins and Dropbox/OneDrive exchange between two physical PCs remain practical
-release checks. Local test packages are unsigned; public releases require signing.
+Automated checks cover fixed link destinations, browser-launch errors, source
+readiness actions and selection behavior. Synthetic render checks exercise links,
+source states and selected rows with dark/light/system themes, compact windows,
+German/English text and 100%, 150% and 200% scaling. Live WoW and two-device provider
+checks remain part of the broader release validation.

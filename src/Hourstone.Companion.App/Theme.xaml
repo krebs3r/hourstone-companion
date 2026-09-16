@@ -342,29 +342,49 @@
     <Setter Property="BorderThickness" Value="0,0,0,1" />
     <Setter Property="HorizontalContentAlignment" Value="Left" />
   </Style>
+  <Style TargetType="DataGridRow">
+    <Setter Property="Foreground" Value="{DynamicResource Text}" />
+    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="DataGridRow">
+          <Grid Background="{TemplateBinding Background}" SnapsToDevicePixels="True">
+            <DataGridCellsPresenter ItemsPanel="{TemplateBinding ItemsPanel}" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+            <Rectangle x:Name="RowKeyboardFocus" Margin="2,2,2,3" Stroke="{DynamicResource Cyan}" StrokeThickness="1" StrokeDashArray="2,2" IsHitTestVisible="False" Visibility="Collapsed" />
+            <Border x:Name="SelectionUnderline" Background="{DynamicResource Cyan}" Height="2" VerticalAlignment="Bottom" IsHitTestVisible="False" Visibility="Collapsed" />
+          </Grid>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsSelected" Value="True">
+              <Setter Property="Background" Value="{DynamicResource Selection}" />
+              <Setter TargetName="SelectionUnderline" Property="Visibility" Value="Visible" />
+            </Trigger>
+            <Trigger Property="IsKeyboardFocusWithin" Value="True">
+              <Setter TargetName="RowKeyboardFocus" Property="Visibility" Value="Visible" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
   <Style TargetType="DataGridCell">
     <Setter Property="Foreground" Value="{DynamicResource Text}" />
-<Setter Property="Padding" Value="20,0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Padding" Value="20,0" />
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="FocusVisualStyle" Value="{x:Null}" />
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="DataGridCell">
-          <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}">
+          <Border Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}">
             <ContentPresenter VerticalAlignment="Center" />
           </Border>
         </ControlTemplate>
       </Setter.Value>
     </Setter>
-      <Style.Triggers>
+    <Style.Triggers>
       <Trigger Property="IsSelected" Value="True">
-        <Setter Property="Background" Value="{DynamicResource Selection}" />
         <Setter Property="Foreground" Value="{DynamicResource Text}" />
       </Trigger>
-      <Trigger Property="IsKeyboardFocusWithin" Value="True">
-        <Setter Property="BorderBrush" Value="{DynamicResource Cyan}" />
-        <Setter Property="BorderThickness" Value="0,0,0,2" />
-      </Trigger>
     </Style.Triggers>
-    </Style>
+  </Style>
 </ResourceDictionary>

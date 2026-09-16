@@ -31,6 +31,8 @@ public partial class MainWindow : Window
     readonly CancellationTokenSource stopping = new();
     readonly UpdateCoordinator? updater;
     readonly SyncNoticeTracker syncNotifications = new();
+    IReadOnlyList<SourceConfiguration>? sourcePreview;
+    IReadOnlyList<LocalSourceStatus>? sourceStatusPreview;
     WindowWorkArea? windowWorkArea;
     UserSettings preferences;
     SettingsDraft? settingsDraft;
@@ -213,6 +215,16 @@ public partial class MainWindow : Window
     }
     async void SyncNow_Click(object sender, RoutedEventArgs e) { if (demo) Notify(vm.English ? "Preview with sample data." : "Vorschau mit Beispieldaten."); else await ScanAsync(); }
     void ToggleRemoved_Click(object sender, RoutedEventArgs e) => vm.ShowRemoved = !vm.ShowRemoved;
+    void OpenProductLink_Click(object sender, RoutedEventArgs e)
+    {
+        if (render || sender is not FrameworkElement { Tag: ProductLink link }) return;
+        var result = ProductLinks.Open(link);
+        if (!result.Succeeded)
+        {
+            var message = string.Format(vm.Culture, vm.Text("BrowserOpenFailed"), ProductLinks.Address(link));
+            Notify(message); DiagnosticsText.Text = message + Environment.NewLine + result.TechnicalError;
+        }
+    }
     async void CharacterAction_Click(object sender, RoutedEventArgs e)
     {
         if (!vm.CanChangeCharacter || vm.SelectedRow is not { } row) return;
@@ -308,8 +320,8 @@ public partial class MainWindow : Window
     void RefreshSources()
     {
         if (SourcesPanel == null) return; SourcesPanel.Children.Clear();
-        if (service == null) { SourcesPanel.Children.Add(new TextBlock { Text = vm.Text("NoSources") }); return; }
-        var sources = service.GetConfiguration().Sources;
+        IReadOnlyList<SourceConfiguration> sources = sourcePreview ?? service?.GetConfiguration().Sources ?? [];
+        IReadOnlyList<LocalSourceStatus> statuses = sourceStatusPreview ?? service?.LastResult.LocalSourceStatuses ?? [];
         if (sources.Count == 0) { SourcesPanel.Children.Add(new TextBlock { Text = vm.Text("NoSources") }); return; }
         foreach (var source in sources)
         {
@@ -317,13 +329,14 @@ public partial class MainWindow : Window
             var checkbox = new CheckBox { Content = MainViewModel.ClientName(source.Flavor) + " · " + source.AccountName, IsChecked = source.Enabled };
             checkbox.Click += async (_, _) =>
             {
-                if (busy) { checkbox.IsChecked = source.Enabled; return; }
-                try { var c = service.GetConfiguration(); service.SaveConfiguration(c with { Sources = c.Sources.Select(x => x.SavedVariablesPath == source.SavedVariablesPath ? x with { Enabled = checkbox.IsChecked == true } : x).ToList() }); RebuildWatchers(); await ScanAsync(); } catch (Exception ex) when (ex is IOException or ArgumentException or InvalidOperationException) { Notify(ex.Message); }
+                var configuredService = service;
+                if (busy || configuredService == null) { checkbox.IsChecked = source.Enabled; return; }
+                try { var c = configuredService.GetConfiguration(); configuredService.SaveConfiguration(c with { Sources = c.Sources.Select(x => x.SavedVariablesPath == source.SavedVariablesPath ? x with { Enabled = checkbox.IsChecked == true } : x).ToList() }); RebuildWatchers(); await ScanAsync(); } catch (Exception ex) when (ex is IOException or ArgumentException or InvalidOperationException) { Notify(ex.Message); }
             };
             panel.Children.Add(checkbox);
             panel.Children.Add(new TextBlock { Text = source.ClientDirectory, FontSize = 13, Foreground = (Brush)FindResource("Muted"), TextWrapping = TextWrapping.Wrap });
             panel.Children.Add(new TextBlock { Text = "Region: " + source.Region, FontSize = 13, Foreground = (Brush)FindResource("Muted"), Margin = new Thickness(0, 10, 0, 0) });
-            var status = service.LastResult.LocalSourceStatuses.FirstOrDefault(item => item.SourceId == source.SourceId);
+            var status = statuses.FirstOrDefault(item => item.SourceId == source.SourceId);
             if (source.Enabled && status != null)
             {
                 var title = new TextBlock { Text = SourceStatusPresentation.Title(status, vm.English), FontSize = 16, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 12, 0, 5) };
@@ -331,12 +344,39 @@ public partial class MainWindow : Window
                 panel.Children.Add(title);
                 var instruction = new TextBlock { Text = SourceStatusPresentation.Instruction(status, vm.English), FontSize = 14, TextWrapping = TextWrapping.Wrap };
                 instruction.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); panel.Children.Add(instruction);
+                if (ProductLinks.AddonActionKey(status.Readiness) is { } actionKey)
+                {
+                    var action = new Button
+                    {
+                        Content = vm.Text(actionKey), Style = (Style)FindResource("PrimaryButton"), Tag = ProductLink.AddonCurseForge,
+                        HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 14, 0, 3), Padding = new Thickness(14, 8, 14, 8),
+                        ToolTip = vm.Text("AddonDownloadTooltip")
+                    };
+                    System.Windows.Automation.AutomationProperties.SetAutomationId(action, "AddonDownload-" + source.SourceId);
+                    System.Windows.Automation.AutomationProperties.SetName(action, vm.Text(actionKey) + " · " + MainViewModel.ClientName(source.Flavor) + " · " + source.AccountName);
+                    System.Windows.Automation.AutomationProperties.SetHelpText(action, vm.Text("ExternalBrowserHint"));
+                    action.Click += OpenProductLink_Click; panel.Children.Add(action);
+                }
             }
             else panel.Children.Add(new TextBlock { Text = source.Enabled ? (vm.English ? "Waiting for the first check …" : "Warte auf die erste Prüfung …") : (vm.English ? "Not selected for synchronization" : "Nicht für den Abgleich ausgewählt"), FontSize = 14, Margin = new Thickness(0, 12, 0, 0) });
             var border = new Border { Style = (Style)FindResource("Card"), Child = panel, Tag = source.SourceId, Margin = new Thickness(0, 0, 0, 12) };
             if (source.Enabled && status is not null && status.Readiness != LocalSourceReadiness.Ready) border.SetResourceReference(Border.BorderBrushProperty, "Gold");
             SourcesPanel.Children.Add(border);
         }
+    }
+    public void SetClientsPreview(string state)
+    {
+        if (!demo) throw new InvalidOperationException("Synthetic client previews are only available in preview mode.");
+        if (state is not ("empty" or "missing" or "outdated")) throw new ArgumentException("Unknown client preview state.", nameof(state));
+        var source = new SourceConfiguration
+        {
+            SourceId = "synthetic-preview", WoWRoot = @"C:\Synthetic WoW", ClientDirectory = @"C:\Synthetic WoW\_retail_",
+            AccountName = "SYNTHETIC_ACCOUNT", Region = "eu", Flavor = "retail"
+        };
+        sourcePreview = state == "empty" ? [] : [source];
+        sourceStatusPreview = state == "empty" ? [] : [new LocalSourceStatus(source.SourceId, source.ClientDirectory, source.AccountName, source.Flavor,
+            state == "missing" ? LocalSourceReadiness.AddonMissing : LocalSourceReadiness.AddonOutdated, state == "missing" ? null : "0.2.1")];
+        RefreshSources();
     }
     void RefreshCloud()
     {
