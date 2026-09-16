@@ -35,6 +35,20 @@ public partial class MainWindow : Window
     {
         this.demo = demo; this.render = render; preferences = demo ? new() : UserSettings.Load();
         vm = new(demo); DataContext = vm; InitializeComponent();
+        if (!render)
+        {
+            var area = SystemParameters.WorkArea;
+            MinWidth = Math.Min(MinWidth, Math.Max(640, area.Width - 32));
+            MinHeight = Math.Min(MinHeight, Math.Max(480, area.Height - 32));
+            Width = Math.Min(Width, area.Width - 32); Height = Math.Min(Height, area.Height - 32);
+        }
+        SizeChanged += (_, _) =>
+        {
+            bool compact = ActualHeight < 660;
+            OverviewPage.RowDefinitions[0].Height = new GridLength(compact ? 96 : 112);
+            OverviewPage.RowDefinitions[1].Height = new GridLength(compact ? 120 : 148);
+            OverviewPage.RowDefinitions[2].Height = new GridLength(compact ? 44 : 56);
+        };
         SetLanguage(preferences.Language == "en"); ApplyTheme(preferences.Theme);
         DeviceNameInput.Text = vm.DeviceName; ThemeChoice.SelectedIndex = preferences.Theme == "light" ? 1 : preferences.Theme == "system" ? 2 : 0;
         LanguageChoice.SelectedIndex = preferences.Language == "en" ? 1 : 0; AutostartChoice.IsChecked = preferences.Autostart;

@@ -31,7 +31,7 @@ public static class Program
                 var scale = double.Parse(Option("--scale", "1"), CultureInfo.InvariantCulture);
                 var width = double.Parse(Option("--width", "1536"), CultureInfo.InvariantCulture);
                 var height = double.Parse(Option("--height", "992"), CultureInfo.InvariantCulture);
-                if (scale < .5 || scale > 3 || width < 1100 || width > 3000 || height < 720 || height > 2000) throw new ArgumentException("Invalid render size.");
+                if (scale < .5 || scale > 3 || width < 960 || width > 3000 || height < 600 || height > 2000) throw new ArgumentException("Invalid render size.");
                 window.Width = width; window.Height = height; window.ShowInTaskbar = false; window.ShowActivated = false; window.Left = -20000; window.Top = -20000;
                 window.ApplyTheme(Option("--theme", "dark"));
                 if (args.Contains("--english")) window.SetLanguage(true);
