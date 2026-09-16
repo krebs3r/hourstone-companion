@@ -30,8 +30,6 @@ jobs:
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
       - name: Test publication and privacy gates
         run: python -m unittest discover -s tools/verification
-      - name: Test publication and privacy gates
-        run: python -m unittest discover -s tools/verification
       - name: Restore locked dependencies
         run: dotnet restore Hourstone.Companion.slnx --locked-mode
       - name: Build

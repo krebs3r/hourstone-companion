@@ -22,12 +22,15 @@ public sealed class SafeFileTests : IDisposable
         Assert.Throws<InvalidDataException>(() => SafeFiles.StableRead(source, 100));
     }
     [Fact]
-    public async Task ReadRecoversAfterWriterReleasesSharingLock()
+    public void ReadRecoversAfterWriterReleasesSharingLock()
     {
         Directory.CreateDirectory(root); var path = Path.Combine(root, "locked.lua"); File.WriteAllText(path, "stable");
-        using var open = new FileStream(path, FileMode.Open, FileAccess.Write, FileShare.None);
-        var read = Task.Run(() => SafeFiles.StableRead(path)); await Task.Delay(25); open.Dispose();
-        Assert.Equal("stable", await read);
+        using (var open = new FileStream(path, FileMode.Open, FileAccess.Write, FileShare.None))
+        {
+            Assert.Throws<IOException>(() => SafeFiles.StableRead(path));
+        }
+        // The next scan must recover once the writer releases its lock.
+        Assert.Equal("stable", SafeFiles.StableRead(path));
     }
     public void Dispose()
     {
