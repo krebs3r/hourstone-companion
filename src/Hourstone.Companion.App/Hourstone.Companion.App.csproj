@@ -1,0 +1,4 @@
+<Project Sdk="Microsoft.NET.Sdk">
+<PropertyGroup><OutputType>WinExe</OutputType><TargetFramework>net10.0-windows</TargetFramework><UseWPF>true</UseWPF><RuntimeIdentifiers>win-x64</RuntimeIdentifiers><UseWindowsForms>true</UseWindowsForms><ImplicitUsings>disable</ImplicitUsings><StartupObject>Hourstone.Companion.App.Program</StartupObject><AssemblyName>Hourstone.Companion</AssemblyName><ApplicationIcon>Assets/Hourstone.ico</ApplicationIcon><ApplicationManifest>app.manifest</ApplicationManifest></PropertyGroup>
+<ItemGroup><ProjectReference Include="../Hourstone.Companion.Core/Hourstone.Companion.Core.csproj"/><PackageReference Include="Velopack" Version="1.2.0"/><Resource Include="Assets/Logo.png"/><Resource Include="Assets/Hourstone.ico"/></ItemGroup>
+</Project>

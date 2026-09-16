@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Hourstone.Companion.App/Hourstone.Companion.App.csproj" />
+    <Project Path="src/Hourstone.Companion.Core/Hourstone.Companion.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Hourstone.Companion.Core.Tests/Hourstone.Companion.Core.Tests.csproj" />
+    <Project Path="tests/Hourstone.Companion.App.Tests/Hourstone.Companion.App.Tests.csproj" />
+  </Folder>
+</Solution>
