@@ -54,7 +54,9 @@ pwsh -File tools/package.ps1 -Unsigned
 The package is a self-contained win-x64 publish built with locked dependencies.
 The script creates an installer, update packages, checksums and dependency notices.
 Artwork notices and assets-manifest.json are included in packages and release assets.
-Unsigned output belongs to local tests and must not be uploaded as a public release.
+Regular validation CI keeps unsigned output private. Publishing an unsigned early
+release requires the explicit manual option documented in [Releasing](RELEASING.md);
+a missing signing certificate never causes an automatic fallback.
 
 All generated files live under `artifacts/`. Do not store real account data,
 provider snapshots, credentials or planning material in this repository. Use only

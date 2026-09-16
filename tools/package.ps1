@@ -13,7 +13,7 @@ if ($env:GITHUB_REF_TYPE -eq 'tag' -and $env:GITHUB_REF_NAME -ne "v$Version") { 
 if ($Unsigned -and $env:GITHUB_REF_TYPE -eq 'tag') { throw 'Unsigned packages cannot be built for a public release tag.' }
 if (-not $Unsigned -and -not $env:SIGNING_CERTIFICATE_THUMBPRINT -and
     -not ($env:SIGNING_CERTIFICATE_BASE64 -and $env:SIGNING_CERTIFICATE_PASSWORD)) {
-    throw 'Public packaging requires a signing certificate. Use -Unsigned only for local test packages.'
+    throw 'Public packaging requires a signing certificate. Use -Unsigned for explicitly authorized unsigned packages.'
 }
 function Invoke-DotNet([string[]]$Arguments) {
     & dotnet @Arguments

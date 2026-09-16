@@ -1,9 +1,23 @@
-name: Signed release
+name: Release
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Stable version tag matching the selected branch, for example v0.1.5'
+        required: true
+        type: string
+      allowUnsigned:
+        description: 'Explicitly publish unsigned packages (Windows may show security warnings)'
+        required: false
+        default: false
+        type: boolean
 permissions:
   contents: read
+concurrency:
+  group: companion-release
+  cancel-in-progress: false
 jobs:
   release:
     runs-on: windows-2025
@@ -18,6 +32,17 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Validate release intent
+        id: intent
+        env:
+          REQUESTED_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+          ALLOW_UNSIGNED: ${{ github.event_name == 'workflow_dispatch' && inputs.allowUnsigned || false }}
+        run: |
+          $version = ([xml](Get-Content Directory.Build.props -Raw)).Project.PropertyGroup.Version
+          if ($version -notmatch '^\d+\.\d+\.\d+$' -or $env:REQUESTED_TAG -cne "v$version") { throw 'Release tag must match the stable project version.' }
+          if ($env:GITHUB_EVENT_NAME -eq 'workflow_dispatch' -and $env:GITHUB_REF_TYPE -ne 'branch') { throw 'Dispatch releases from a branch, not a tag.' }
+          "tag=$($env:REQUESTED_TAG)" >> $env:GITHUB_OUTPUT
+          "allowUnsigned=$($env:ALLOW_UNSIGNED)" >> $env:GITHUB_OUTPUT
       - uses: actions/setup-dotnet@d4c94342e560b34958eacfc5d055d21461ed1c5d # v5.0.0
         with:
           global-json-file: global.json
@@ -38,13 +63,25 @@ jobs:
         run: dotnet build Hourstone.Companion.slnx -c Release --no-restore
       - name: Test core and application
         run: dotnet test Hourstone.Companion.slnx -c Release --no-build --logger trx --results-directory artifacts/test-results
+      - name: Render and verify the application
+        run: ./tools/render-smoke.ps1 -Extended
       - name: Package and validate signed payload
+        if: steps.intent.outputs.allowUnsigned != 'true'
         env:
           SIGNING_CERTIFICATE_BASE64: ${{ secrets.SIGNING_CERTIFICATE_BASE64 }}
           SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.SIGNING_CERTIFICATE_PASSWORD }}
         run: ./tools/package.ps1
+      - name: Package and validate explicitly unsigned payload
+        if: steps.intent.outputs.allowUnsigned == 'true'
+        run: ./tools/package.ps1 -Unsigned
       - name: Publish validated assets
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.ref_name }}
-        run: ./tools/publish-release.ps1 -Tag $env:RELEASE_TAG
+          RELEASE_TAG: ${{ steps.intent.outputs.tag }}
+          ALLOW_UNSIGNED: ${{ steps.intent.outputs.allowUnsigned }}
+        run: |
+          if ($env:ALLOW_UNSIGNED -eq 'true') {
+            ./tools/publish-release.ps1 -Tag $env:RELEASE_TAG -Commit $env:GITHUB_SHA -AllowUnsigned
+          } else {
+            ./tools/publish-release.ps1 -Tag $env:RELEASE_TAG -Commit $env:GITHUB_SHA
+          }

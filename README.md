@@ -4,9 +4,12 @@ A Windows companion for [Hourstone – Azeroth Hours](https://github.com/krebs3r
 View saved character playtime across supported WoW clients and synchronize your
 own PCs through a locally available Dropbox or OneDrive folder.
 
-**Development preview.** The source builds locally. A public installer is released
-only after signing and the checks in [Release validation](docs/RELEASING.md).
-Live WoW clients and two-device provider synchronization require practical validation.
+[Download Hourstone Companion for Windows](https://github.com/krebs3r/hourstone-companion/releases/latest)
+
+Choose the **Setup.exe** installer or fully extract the **Portable.zip** package.
+The .NET runtime is included. **Version 0.1.5 is an unsigned early release.**
+End-to-end Dropbox and OneDrive exchange between two PCs has not yet been
+practically validated. See the [release notes](docs/RELEASE-NOTES.md).
 
 ![Hourstone Companion with sample characters](docs/assets/overview.png)
 
@@ -44,6 +47,9 @@ companion repository. The footer also shows the version and **with ♥ by krebs3
 
 The companion requires a compatible addon release. Check the version on CurseForge:
 a published Hourstone 0.1.x package cannot provide companion synchronization.
+If CurseForge still lists an older version, use the compatible
+[Hourstone 0.2.3 addon release on GitHub](https://github.com/krebs3r/hourstone-azeroth-hours/releases/tag/v0.2.3).
+CurseForge remains the preferred addon update source after approval.
 
 Guilds appear beneath each character. **No guild** is a confirmed state;
 **Not yet recorded** means that character still needs a login with Hourstone 0.2.1
@@ -152,8 +158,9 @@ pwsh -File tools/render-smoke.ps1
 pwsh -File tools/package.ps1 -Unsigned
 ```
 
-Unsigned packages are for local testing. End-user builds include the .NET runtime;
-users do not need an SDK. See [Development](docs/DEVELOPMENT.md),
+Local package builds are unsigned by default in the example above. Public unsigned
+releases require an explicit publishing option; signed releases remain the default.
+End-user builds include the .NET runtime; users do not need an SDK. See [Development](docs/DEVELOPMENT.md),
 [Release validation](docs/RELEASING.md) and the
 [pinned synchronization contract](docs/sync-protocol-v3.md).
 

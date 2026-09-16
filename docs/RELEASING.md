@@ -14,13 +14,20 @@ from `krebs3r/hourstone-companion`; addon releases have their own version series
   and addon acquisition states. Footer bounds and full-row selection are checked.
 - Repository privacy guard across the current tree and newly introduced commit blobs.
 - Self-contained win-x64 packaging, package content allowlist and checksums.
-- Valid Authenticode signatures for the installer and executable payloads.
+- For signed releases, valid Authenticode signatures for the installer and executable payloads.
 
 A normal CI run creates unsigned test packages and never publishes them. A tagged
-release uses the `release` environment and fails if signing is unavailable.
-It never falls back to unsigned publication.
+release uses the `release` environment and requires signing. It never falls back
+to unsigned publication when a certificate is missing.
 
-Configure repository environment protection rules for release maintainers before publishing.
+An unsigned early release is a separate, explicit maintainer choice through the
+manual Release workflow with `allowUnsigned: true`. Package validation, privacy
+checks and release-asset integrity checks still apply. Release notes must clearly
+state that the packages are unsigned and list material validation gaps.
+
+The 0.1.5 early release uses this unsigned path. Two-device provider testing remains
+outstanding; it is not reported as passed. Configure release-environment protection
+rules when establishing the signed distribution process.
 
 ## Signing configuration
 
@@ -36,7 +43,7 @@ executables are covered. A timestamp service is used. The script verifies signat
 before generating the final public asset list. A trusted signing certificate must
 be provisioned separately; the repository does not contain one.
 
-## Practical checks before a public tag
+## Practical validation
 
 - Check the main screen, resizing, long names, keyboard focus and tray behavior.
 - Check enabled/disabled button hover, active time-format selection and text-only
@@ -60,22 +67,35 @@ be provisioned separately; the repository does not contain one.
 - Verify CurseForge and both GitHub links open the correct default-browser pages.
 - Check mouse and keyboard selection in both character lists, including sorting
   and moving focus to an action without losing the full-row underline.
-- Confirm Hourstone 0.2.2 or later is publicly available on CurseForge before a
-  public companion tag; a GitHub release or pending upload alone is insufficient.
+- Confirm a compatible Hourstone 0.2.2+ package is publicly downloadable. Prefer
+  CurseForge; when moderation is pending, explicitly link the compatible addon
+  GitHub release in the setup instructions and release notes.
 - Exercise Retail, Mists Classic, TBC Anniversary and Classic Era with selected accounts.
 - Confirm the first data-addon installation requires a WoW restart and subsequent data
   refreshes load on login/reload without modifying SavedVariables.
 - Test an update from the previous signed release, both with WoW running and closed.
 - Verify the release notes accurately distinguish automated checks from practical checks.
 
-No successful live-client, two-device or public-signing validation is implied by
-the presence of these checklists. Record completed validation in the release notes.
+The checklist tracks coverage; it does not imply that each item has passed.
+Record completed checks and material gaps in the release notes. Early releases
+may document incomplete practical coverage without claiming it was verified.
 
 ## Publishing
 
-After checks pass, update the version and release notes, commit reviewed public
-files and push the matching version tag. The release workflow uploads only files
-listed in the generated release manifest, including `ASSET-NOTICES.txt` and
-`assets-manifest.json` with their checksums. Bundled-artwork verification runs again
-at the start of packaging, including signed releases. Package signing and validation happen
-before a GitHub release is created.
+Commit reviewed public files and release notes before publishing. For a signed
+release, push the matching version tag or run the manual Release workflow with
+signing enabled. For an explicitly unsigned early release, run the manual workflow
+on the reviewed branch, set `tag` to the declared version and `allowUnsigned` to
+`true`. Do not push a tag to request an unsigned release: tag-triggered runs still
+require a certificate.
+
+The workflow builds fresh packages, so their embedded release notes match the
+published version. It uploads only the manifest-listed assets, including the
+installer, portable archive, full Velopack update package, feed, checksums and
+license notices. Bundled artwork and file integrity are validated before publishing.
+
+A missing tag is created at the validated commit only after checks succeed. An
+existing tag must match that commit. An empty release draft can be completed;
+published releases and nonempty drafts are not overwritten. Assets are uploaded
+and checked before the draft is made public. Inspect an interrupted nonempty draft
+before retrying rather than silently replacing its assets.

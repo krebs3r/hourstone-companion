@@ -22,13 +22,18 @@ und gespeicherte Spielzeit bleiben erhalten. Das Addon funktioniert auch ohne Ap
 
 Benötigt **Hourstone 0.2.2 oder neuer**. Einstellungen, Spielzeitdaten und
 Wiederherstellungen bleiben erhalten; das Synchronisierungsprotokoll bleibt bei
-Version 3.
+Version 3. Falls CurseForge noch eine ältere Addon-Version anbietet, verwende
+[Hourstone 0.2.3 auf GitHub](https://github.com/krebs3r/hourstone-azeroth-hours/releases/tag/v0.2.3).
 
-**Veröffentlichungsstatus: Entwurf.** Der signierte Windows-Installer steht noch
-aus; ein öffentlicher Companion-Download ist noch nicht freigegeben. Vor der
-Veröffentlichung müssen die praktischen Prüfungen abgeschlossen und ein
-kompatibles Addon auf CurseForge verfügbar sein. Nicht signierte Pakete sind
-ausschließlich für lokale Tests vorgesehen.
+**Unsignierte frühe Version.** Installer und Portable-Paket enthalten die
+.NET-Laufzeit. Windows kann einen unbekannten Herausgeber anzeigen. Lade die
+Pakete aus diesem Repository herunter; Prüfsummen liegen dem Release bei.
+
+Das lokale Upgrade von 0.1.4 auf 0.1.5 sowie Datenabgleich, Oberfläche und
+GitHub-Updateprüfung wurden geprüft. Automatisierte Tests sind erfolgreich.
+Der vollständige Austausch über Dropbox oder OneDrive zwischen zwei PCs ist
+noch nicht praktisch geprüft; eine erfolgreiche automatische Updateinstallation
+von einer zuvor veröffentlichten Version wurde noch nicht nachgewiesen.
 
 ## English
 
@@ -50,9 +55,14 @@ focus box. **Deleted characters** and **Delete from overview** use consistent
 wording. The WoW addon is updated separately through CurseForge.
 
 Requires **Hourstone 0.2.2 or later**. Protocol 3, existing settings, observations
-and restoration controls are preserved.
+and restoration controls are preserved. If CurseForge still offers an older addon,
+use [Hourstone 0.2.3 on GitHub](https://github.com/krebs3r/hourstone-azeroth-hours/releases/tag/v0.2.3).
 
-**Release status: draft.** The signed Windows installer is pending; a public
-Companion download is not yet available. Public release requires signing, the
-practical checks in [Release validation](https://github.com/krebs3r/hourstone-companion/blob/main/docs/RELEASING.md), and a compatible addon on
-CurseForge. Unsigned packages are for local testing only.
+**Unsigned early release.** The installer and portable package include the .NET
+runtime. Windows may show an unknown publisher. Download from this repository;
+checksums are included with the release.
+
+The local 0.1.4-to-0.1.5 upgrade, data processing, interface and GitHub update check
+were verified, and automated tests passed. End-to-end Dropbox/OneDrive exchange
+between two PCs and automatic update installation from a previously published
+version have not yet been practically verified.
