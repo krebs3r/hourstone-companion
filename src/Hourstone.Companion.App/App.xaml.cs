@@ -33,8 +33,10 @@ public static class Program
                 var height = double.Parse(Option("--height", "992"), CultureInfo.InvariantCulture);
                 if (scale < .5 || scale > 3 || width < 960 || width > 3000 || height < 600 || height > 2000) throw new ArgumentException("Invalid render size.");
                 window.Width = width; window.Height = height; window.ShowInTaskbar = false; window.ShowActivated = false; window.Left = -20000; window.Top = -20000;
-                window.ApplyTheme(Option("--theme", "dark"));
-                if (args.Contains("--english")) window.SetLanguage(true);
+                window.SetRenderTheme(Option("--theme", "dark"));
+                if (args.Contains("--english")) window.SetRenderLanguage(true);
+                if (args.Contains("--all-classes")) ((MainViewModel)window.DataContext).SetObservations(MainViewModel.AllClassDemoData());
+                if (args.Contains("--settings-draft")) window.SetSettingsDraftPreview();
                 if (args.Contains("--long-names")) window.SetLongNamePreview();
                 window.SetRenderPage(Option("--page", "overview"));
                 window.Loaded += (_, _) => window.Dispatcher.InvokeAsync(() =>

@@ -6,8 +6,11 @@ from `krebs3r/hourstone-companion`; addon releases have their own version series
 
 ## Automated checks
 
+- Offline bundled-artwork verification with `python tools/verify_assets.py`: catalog,
+  SHA-256, PNG structure and dimensions against `docs/assets-manifest.json`.
 - Locked solution restore, Release build and core/conformance tests.
-- Dark/light render smoke checks at 100%, 150% and 200%.
+- Dark/light render smoke checks at 100%, 150% and 200%; validation CI also renders
+  system theme, settings, all classes, long names and compact layouts.
 - Repository privacy guard across the current tree and newly introduced commit blobs.
 - Self-contained win-x64 packaging, package content allowlist and checksums.
 - Valid Authenticode signatures for the installer and executable payloads.
@@ -52,5 +55,7 @@ the presence of these checklists. Record completed validation in the release not
 
 After checks pass, update the version and release notes, commit reviewed public
 files and push the matching version tag. The release workflow uploads only files
-listed in the generated release manifest. Package signing and validation happen
+listed in the generated release manifest, including `ASSET-NOTICES.txt` and
+`assets-manifest.json` with their checksums. Bundled-artwork verification runs again
+at the start of packaging, including signed releases. Package signing and validation happen
 before a GitHub release is created.

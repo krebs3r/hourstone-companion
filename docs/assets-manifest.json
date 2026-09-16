@@ -1,0 +1,287 @@
+{
+  "schema_version": 1,
+  "acquired_on": "2026-09-16",
+  "assets": [
+    {
+      "id": "class:WARRIOR",
+      "file": "src/Hourstone.Companion.App/Assets/Classes/WARRIOR.png",
+      "width": 56,
+      "height": 56,
+      "sha256": "9921f2494d6ee2239dfb56ef996c55020558ff7e6f89bf94047d85547f8ead4e",
+      "source": {
+        "kind": "Blizzard render CDN",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/classicon_warrior.jpg",
+        "sha256": "7ede428c9a375cd2d03bc495a4956e4a0e16c1a271aee3828c2cbd0b7de95c08"
+      },
+      "rights": "Blizzard Entertainment; excluded from MIT",
+      "transformation": "JPEG decoded to RGB PNG; original 56 x 56 pixels, no crop or recoloring"
+    },
+    {
+      "id": "class:PALADIN",
+      "file": "src/Hourstone.Companion.App/Assets/Classes/PALADIN.png",
+      "width": 56,
+      "height": 56,
+      "sha256": "5cf89dc6ee7558dfdbb21be0052c383bdea87c4f5b558bc28d9da811c1fee11c",
+      "source": {
+        "kind": "Blizzard render CDN",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/classicon_paladin.jpg",
+        "sha256": "9162e002766b1fdd5d3c85888151275680febc0cda657d5add5d6ad8fe705670"
+      },
+      "rights": "Blizzard Entertainment; excluded from MIT",
+      "transformation": "JPEG decoded to RGB PNG; original 56 x 56 pixels, no crop or recoloring"
+    },
+    {
+      "id": "class:HUNTER",
+      "file": "src/Hourstone.Companion.App/Assets/Classes/HUNTER.png",
+      "width": 56,
+      "height": 56,
+      "sha256": "ccaf3c8149e1ea4ade338b762063157439aa8055cd42e4963db21cf2e503bd93",
+      "source": {
+        "kind": "Blizzard render CDN",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/classicon_hunter.jpg",
+        "sha256": "96e353b3e0dcbdb8652b729597fa6e0d978d2363ec0df40cd9def1a21cb11365"
+      },
+      "rights": "Blizzard Entertainment; excluded from MIT",
+      "transformation": "JPEG decoded to RGB PNG; original 56 x 56 pixels, no crop or recoloring"
+    },
+    {
+      "id": "class:ROGUE",
+      "file": "src/Hourstone.Companion.App/Assets/Classes/ROGUE.png",
+      "width": 56,
+      "height": 56,
+      "sha256": "90bd60d412fab6516a8106e18977bb3cb97174c4301159b8f55b1dcaa282fcca",
+      "source": {
+        "kind": "Blizzard render CDN",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/classicon_rogue.jpg",
+        "sha256": "c6984f30e4e7fe87669a48aa2d361fa84e909b88150143d649a8117be263f9e3"
+      },
+      "rights": "Blizzard Entertainment; excluded from MIT",
+      "transformation": "JPEG decoded to RGB PNG; original 56 x 56 pixels, no crop or recoloring"
+    },
+    {
+      "id": "class:PRIEST",
+      "file": "src/Hourstone.Companion.App/Assets/Classes/PRIEST.png",
+      "width": 56,
+      "height": 56,
+      "sha256": "c6566ce0ca142c325c2aa4d2eb470b364f1b35455d2b97175c1042fb5a1a224d",
+      "source": {
+        "kind": "Blizzard render CDN",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/classicon_priest.jpg",
+        "sha256": "3e71c540e3c29e8cfb798fc9c3c4f6d4acb5bb5a5b69290cab00a528025eaae9"
+      },
+      "rights": "Blizzard Entertainment; excluded from MIT",
+      "transformation": "JPEG decoded to RGB PNG; original 56 x 56 pixels, no crop or recoloring"
+    },
+    {
+      "id": "class:DEATHKNIGHT",
+      "file": "src/Hourstone.Companion.App/Assets/Classes/DEATHKNIGHT.png",
+      "width": 56,
+      "height": 56,
+      "sha256": "2d8bbbf610d652a080b805dd21655ccf20aeee9106ed766800f0418d02daedd6",
+      "source": {
+        "kind": "Blizzard render CDN",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/classicon_deathknight.jpg",
+        "sha256": "158b01eee6479ae1d83b4d769c2defa254399c29a6006cb3b1926fdad8d22e97"
+      },
+      "rights": "Blizzard Entertainment; excluded from MIT",
+      "transformation": "JPEG decoded to RGB PNG; original 56 x 56 pixels, no crop or recoloring"
+    },
+    {
+      "id": "class:SHAMAN",
+      "file": "src/Hourstone.Companion.App/Assets/Classes/SHAMAN.png",
+      "width": 56,
+      "height": 56,
+      "sha256": "77074ea3dd2ac6ddaf47c0def7298b751b220637bbcd913aee068725fab88d91",
+      "source": {
+        "kind": "Blizzard render CDN",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/classicon_shaman.jpg",
+        "sha256": "1e08364ca3f6917e0ab91bb5155fc37499c48c181ee852fb6445a3662b44e427"
+      },
+      "rights": "Blizzard Entertainment; excluded from MIT",
+      "transformation": "JPEG decoded to RGB PNG; original 56 x 56 pixels, no crop or recoloring"
+    },
+    {
+      "id": "class:MAGE",
+      "file": "src/Hourstone.Companion.App/Assets/Classes/MAGE.png",
+      "width": 56,
+      "height": 56,
+      "sha256": "bb0efd975a69480b9aeec80b6d90d22e7fa77ed5e371468a35c57cd665e175bf",
+      "source": {
+        "kind": "Blizzard render CDN",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/classicon_mage.jpg",
+        "sha256": "cbaa6a856d6e7945188a331a4663edc8980d8f1563b246938b716363b8dae0cf"
+      },
+      "rights": "Blizzard Entertainment; excluded from MIT",
+      "transformation": "JPEG decoded to RGB PNG; original 56 x 56 pixels, no crop or recoloring"
+    },
+    {
+      "id": "class:WARLOCK",
+      "file": "src/Hourstone.Companion.App/Assets/Classes/WARLOCK.png",
+      "width": 56,
+      "height": 56,
+      "sha256": "a88426e5feb99208fc076f3595d9b64be72dbe1253e7e9b3e89a3d2edc95c568",
+      "source": {
+        "kind": "Blizzard render CDN",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/classicon_warlock.jpg",
+        "sha256": "3f1f375b46861f37aedcfa0ab64e86bd3955e7154a882d8db8966f5632643186"
+      },
+      "rights": "Blizzard Entertainment; excluded from MIT",
+      "transformation": "JPEG decoded to RGB PNG; original 56 x 56 pixels, no crop or recoloring"
+    },
+    {
+      "id": "class:MONK",
+      "file": "src/Hourstone.Companion.App/Assets/Classes/MONK.png",
+      "width": 56,
+      "height": 56,
+      "sha256": "e0736fe109dd1146279d9a6bfa3984cb5cc3bbda470eea7abc8311afbed706f9",
+      "source": {
+        "kind": "Blizzard render CDN",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/classicon_monk.jpg",
+        "sha256": "b131281d3c866385d7817d379b315aae440615aa8eb2176f2dd7d86d7a9c22e7"
+      },
+      "rights": "Blizzard Entertainment; excluded from MIT",
+      "transformation": "JPEG decoded to RGB PNG; original 56 x 56 pixels, no crop or recoloring"
+    },
+    {
+      "id": "class:DRUID",
+      "file": "src/Hourstone.Companion.App/Assets/Classes/DRUID.png",
+      "width": 56,
+      "height": 56,
+      "sha256": "6c748e426b9f4976be261369f3c461982c5fd54656431683dac4e94d5eaebf86",
+      "source": {
+        "kind": "Blizzard render CDN",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/classicon_druid.jpg",
+        "sha256": "e149fa0b12c90073807e1d6b91053aa26a8c2b29bd78ce58f28347dd23e368f8"
+      },
+      "rights": "Blizzard Entertainment; excluded from MIT",
+      "transformation": "JPEG decoded to RGB PNG; original 56 x 56 pixels, no crop or recoloring"
+    },
+    {
+      "id": "class:DEMONHUNTER",
+      "file": "src/Hourstone.Companion.App/Assets/Classes/DEMONHUNTER.png",
+      "width": 56,
+      "height": 56,
+      "sha256": "a6f4e66eddd8914f41bb6009a7bf24c197b5ce07cb80f01d52412b8ec000f8ad",
+      "source": {
+        "kind": "Blizzard render CDN",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/classicon_demonhunter.jpg",
+        "sha256": "5f5d7d0b2e4b2229a398d9ce351af0e688c996266ca67763f1a4f45ad2de345f"
+      },
+      "rights": "Blizzard Entertainment; excluded from MIT",
+      "transformation": "JPEG decoded to RGB PNG; original 56 x 56 pixels, no crop or recoloring"
+    },
+    {
+      "id": "class:EVOKER",
+      "file": "src/Hourstone.Companion.App/Assets/Classes/EVOKER.png",
+      "width": 56,
+      "height": 56,
+      "sha256": "fa1ab6be707d78491ed2a11bc5b06fa1d472756b85f11ab5292f184fb397fb1e",
+      "source": {
+        "kind": "Blizzard render CDN",
+        "url": "https://render.worldofwarcraft.com/us/icons/56/classicon_evoker.jpg",
+        "sha256": "cc965d687e67977240b6d953df95af548ba8578d17e250d4e03c841ad3a953c1"
+      },
+      "rights": "Blizzard Entertainment; excluded from MIT",
+      "transformation": "JPEG decoded to RGB PNG; original 56 x 56 pixels, no crop or recoloring"
+    },
+    {
+      "id": "client:retail",
+      "file": "src/Hourstone.Companion.App/Assets/Clients/retail.png",
+      "width": 256,
+      "height": 256,
+      "sha256": "087c72190346842779bbacd394c8f7be6f71147ce4cfc7b3f7f8ecad232d5a51",
+      "source": {
+        "kind": "Blizzard Battle.net application resource",
+        "product": "World of Warcraft",
+        "package": "Battle.net 2.52.11.17778 / Battle.net.mpq",
+        "package_sha256": "6598be1823db0c17dfe49efe53cfb66129da31e3d320303648ad7599054124bc",
+        "resource": "resources/js/phoenix_home/icons/world-of-warcraft.svg",
+        "sha256": "fb04d0ba7ccc0d2ecfb51e2f672b00576564d78ad7a46392dccd7bad8097fe1a"
+      },
+      "rights": "Blizzard Entertainment; excluded from MIT",
+      "transformation": "Original SVG rasterized at 256 x 256 with resvg-py 0.5.0; no crop, recoloring, or redrawing"
+    },
+    {
+      "id": "client:mists",
+      "file": "src/Hourstone.Companion.App/Assets/Clients/mists.png",
+      "width": 256,
+      "height": 256,
+      "sha256": "c497f873271997eb90e4f49e8d8eb839c5715945c7fae54cab2b5a8ad1ed67d2",
+      "source": {
+        "kind": "Blizzard Battle.net application resource",
+        "product": "Mists of Pandaria Classic",
+        "package": "Battle.net 2.52.11.17778 / Battle.net.mpq",
+        "package_sha256": "6598be1823db0c17dfe49efe53cfb66129da31e3d320303648ad7599054124bc",
+        "resource": "resources/js/phoenix_home/icons/wow-mop.svg",
+        "sha256": "a2e9c4c2042eab00e50a462caab481b38aeec8747d5588eed9c433912d0ba41a",
+        "corroborating_press_page": "https://blizzard.gamespress.com/en/World-of-Warcraft-Mists-of-Pandaria-Classic-Launch",
+        "press_asset": "WoW_Mists_of_Pandaria_Classic_Icon_01.png",
+        "press_asset_sha256": "873d3c111fa268148e083a0dddba497c1bbcca36f213faaeed26d35612d7babe"
+      },
+      "rights": "Blizzard Entertainment; excluded from MIT",
+      "transformation": "Original SVG rasterized at 256 x 256 with resvg-py 0.5.0; no crop, recoloring, or redrawing"
+    },
+    {
+      "id": "client:tbc",
+      "file": "src/Hourstone.Companion.App/Assets/Clients/tbc.png",
+      "width": 256,
+      "height": 256,
+      "sha256": "bd62837d9a4e5bb84bf4189fbc64d8bd8b00f0582f54c9b39667086628d27d6b",
+      "source": {
+        "kind": "Blizzard Battle.net application resource",
+        "product": "Burning Crusade Classic",
+        "package": "Battle.net 2.52.11.17778 / Battle.net.mpq",
+        "package_sha256": "6598be1823db0c17dfe49efe53cfb66129da31e3d320303648ad7599054124bc",
+        "resource": "resources/js/phoenix_home/icons/wow-classic.svg",
+        "sha256": "cec2c667f3521b82283138fb3602fcbffbe45228e3dcaa1643268d6fa2709d97"
+      },
+      "rights": "Blizzard Entertainment; excluded from MIT",
+      "transformation": "Original SVG rasterized at 256 x 256 with resvg-py 0.5.0; no crop, recoloring, or redrawing"
+    },
+    {
+      "id": "client:era",
+      "file": "src/Hourstone.Companion.App/Assets/Clients/era.png",
+      "width": 32,
+      "height": 32,
+      "sha256": "7248edb976147160bdeccb3900c6cf4a038a26696cadddd3f0b7223f8f014648",
+      "source": {
+        "kind": "Blizzard Classic Era executable icon",
+        "product": "World of Warcraft Classic Era",
+        "resource": "_classic_era_/WowClassic.exe, icon index 0, resource ID 1",
+        "version": "1.15.9.69722",
+        "executable_sha256": "07d10839d3b757918e92adbc9eb5e7c999e36a1da6975deeb5c2465ce728bd7a",
+        "authenticode_status": "Valid",
+        "extracted_png_sha256": "7248edb976147160bdeccb3900c6cf4a038a26696cadddd3f0b7223f8f014648"
+      },
+      "rights": "Blizzard Entertainment; excluded from MIT",
+      "transformation": "Native 32 x 32 icon exported through Windows PrivateExtractIcons; no enlargement, crop, recoloring, or redrawing"
+    },
+    {
+      "id": "heart",
+      "file": "src/Hourstone.Companion.App/Assets/Heart.png",
+      "width": 32,
+      "height": 32,
+      "sha256": "206f024e036fbbe79539aba259478ae9ce5635a981a0c62be87c3bcc907c0dd8",
+      "source": {
+        "kind": "Hourstone artwork",
+        "url": "https://github.com/krebs3r/hourstone-azeroth-hours/blob/7919c2f505f9d2a723baa5e41ef4c52629ca1234/Hourstone/Media/Heart.tga",
+        "sha256": "7c94974db792b8cd983786969316a6c073cfb8c1a418eb2e7576ad8acebc3800"
+      },
+      "rights": "MIT; Hourstone contributors",
+      "transformation": "TGA decoded to RGBA PNG; all 32 x 32 RGBA pixels identical, including original pink coloring and alpha"
+    },
+    {
+      "id": "unknown",
+      "file": "src/Hourstone.Companion.App/Assets/Unknown.png",
+      "width": 56,
+      "height": 56,
+      "sha256": "7520aba48d72489cfca540b3206c148b81d594b6bf8952c642aa1474fbdaff78",
+      "source": {
+        "kind": "Hourstone original geometric fallback",
+        "description": "Neutral ring and centered dot; used only for unknown class or client identifiers"
+      },
+      "rights": "MIT; Hourstone contributors",
+      "transformation": "Original 56 x 56 RGBA geometric marker"
+    }
+  ]
+}

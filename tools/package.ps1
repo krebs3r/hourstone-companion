@@ -39,6 +39,8 @@ $removeCertificate = $false
 $pfxPath = $null
 Push-Location $repoRoot
 try {
+    & python (Join-Path $PSScriptRoot 'verify_assets.py')
+    if ($LASTEXITCODE -ne 0) { throw 'Bundled asset verification failed.' }
     if (-not $Unsigned) {
         if ($env:SIGNING_CERTIFICATE_THUMBPRINT) {
             $thumbprint = $env:SIGNING_CERTIFICATE_THUMBPRINT -replace '\s', ''
@@ -78,6 +80,8 @@ try {
         Copy-Item -LiteralPath $file.FullName -Destination $target
     }
     Copy-Item -LiteralPath (Join-Path $repoRoot 'LICENSE') -Destination (Join-Path $packageRoot 'LICENSE.txt')
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'docs/ASSETS.md') -Destination (Join-Path $packageRoot 'ASSET-NOTICES.txt')
+    Copy-Item -LiteralPath (Join-Path $repoRoot 'docs/assets-manifest.json') -Destination (Join-Path $packageRoot 'assets-manifest.json')
     & python (Join-Path $PSScriptRoot 'dependency-notices.py') --output $packageRoot
     if ($LASTEXITCODE -ne 0) { throw 'Dependency inventory generation failed.' }
     & (Join-Path $PSScriptRoot 'render-smoke.ps1') -Executable (Join-Path $packageRoot 'Hourstone.Companion.exe') -OutputDirectory (Join-Path $artifactRoot 'package-renders')
@@ -121,7 +125,7 @@ try {
     $portableArchive = Join-Path $releaseRoot 'HourstoneCompanion-win-Portable.zip'
     [IO.Compression.ZipFile]::ExtractToDirectory($portableArchive, $portableRoot)
     & (Join-Path $PSScriptRoot 'render-smoke.ps1') -Executable (Join-Path $portableRoot 'current/Hourstone.Companion.exe') -OutputDirectory (Join-Path $artifactRoot 'portable-renders') -Scales 1 -Themes 'dark'
-    foreach ($name in @('dependencies.cdx.json', 'DEPENDENCY-NOTICES.txt', 'LICENSE.txt')) {
+    foreach ($name in @('dependencies.cdx.json', 'DEPENDENCY-NOTICES.txt', 'ASSET-NOTICES.txt', 'assets-manifest.json', 'LICENSE.txt')) {
         Copy-Item -LiteralPath (Join-Path $packageRoot $name) -Destination (Join-Path $releaseRoot $name)
     }
     $entries = @(Get-ChildItem -LiteralPath $releaseRoot -File | Sort-Object Name | ForEach-Object {

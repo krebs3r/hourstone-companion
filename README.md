@@ -16,7 +16,8 @@ Live WoW clients and two-device provider synchronization require practical valid
 - Local, read-only ingestion of selected Hourstone account data.
 - Optional device synchronization using one snapshot per computer and no companion server.
 - A generated data addon makes the combined overview available in WoW.
-- Windows tray operation, configurable autostart, German/English and dark/light themes.
+- Windows tray operation, configurable autostart, German/English and dark/light/system themes.
+- Clear save feedback, per-account setup guidance and original class and game icons.
 
 It supports **Windows 11 x64** and Hourstone **0.2.0** with Retail, Mists Classic,
 TBC Anniversary and Classic Era. The WoW addon also works independently.
@@ -30,6 +31,16 @@ TBC Anniversary and Classic Era. The WoW addon also works independently.
    Later updates become available on login or reload.
 4. For multiple computers, select the same provider folder on each computer and
    keep it available offline in Dropbox or OneDrive.
+
+In **Settings**, changing the device name, appearance, language or autostart enables
+**Save changes**. The highlighted button applies the choices; the unsaved status
+clears after a successful save. Closing to the tray keeps the current draft.
+
+![Settings with unsaved changes in light appearance](docs/assets/settings.png)
+
+If an account is waiting for its first save, log in **inside that WoW client** with
+Hourstone 0.2.0, then log out or run `/reload`. Restarting the Companion alone is
+not enough. The Clients page identifies each account that still needs this step.
 
 WoW must save, the provider must transport the files, and the target client must
 load the data. The companion reports these stages separately. It does not claim
@@ -65,5 +76,6 @@ direct provider APIs, a hosted account service, or macOS/Linux builds. Disconnec
 a sync folder removes received contributions locally and does not delete files on
 other computers.
 
-Source code is [MIT licensed](LICENSE). Dependency notices are included in packages.
+Source code is [MIT licensed](LICENSE). Original Blizzard images have separate
+[asset notices and provenance](docs/ASSETS.md). Dependency and asset notices are included in packages.
 Hourstone is an independent project and is not affiliated with Blizzard Entertainment.

@@ -156,7 +156,7 @@ public static partial class SourceDiscovery
     {
         "_retail_" => "retail",
         "_classic_era_" => "era",
-        "_classic_anniversary_" => "tbc",
+        "_classic_anniversary_" or "_anniversary_" => "tbc",
         "_classic_" => "mists",
         _ => "retail"
     };

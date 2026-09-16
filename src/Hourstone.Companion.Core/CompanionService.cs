@@ -86,27 +86,53 @@ public sealed class CompanionService : IDisposable
     {
         ThrowIfDisposed(); var issues = new List<SyncIssue>(); var selected = configuration.Sources.Where(s => s.Enabled).ToArray();
         store.RetainSources(selected.Select(s => s.SourceId));
+        var sourceStatuses = new List<LocalSourceStatus>();
         foreach (var source in selected)
         {
             cancellationToken.ThrowIfCancellationRequested();
+            var status = AddonReadiness.Inspect(source);
+            var metadataIssue = status.Readiness switch
+            {
+                LocalSourceReadiness.AddonMissing => "addon_missing",
+                LocalSourceReadiness.AddonOutdated => "addon_outdated",
+                LocalSourceReadiness.ReadFailed => "addon_read_failed",
+                _ => null
+            };
+            if (metadataIssue is not null) issues.Add(new SyncIssue(metadataIssue, status.Message!, source.SourceId));
             try
             {
                 SourceDiscovery.Validate(source);
-                var parsed = SavedVariablesReader.Read(SafeFiles.StableRead(source.SavedVariablesPath), source);
-                if (parsed.SourceId is null)
-                { issues.Add(new SyncIssue("source_not_initialized", "Hourstone muss mit der neuen Addon-Version einmal eingeloggt und anschließend ausgeloggt oder neu geladen werden.", source.SourceId)); continue; }
-                var effective = source;
-                if (source.SourceId != parsed.SourceId)
+                var parsed = File.Exists(source.SavedVariablesPath)
+                    ? SavedVariablesReader.Read(SafeFiles.StableRead(source.SavedVariablesPath), source) : null;
+                if (parsed?.SourceId is null)
                 {
-                    if (configuration.Sources.Any(s => s.SourceId == parsed.SourceId && s != source)) throw new InvalidDataException("The same logical source is configured more than once.");
-                    effective = source with { SourceId = parsed.SourceId };
-                    configuration = configuration with { Sources = configuration.Sources.Select(s => s == source ? effective : s).ToList() };
-                    PersistConfiguration();
+                    if (status.Readiness == LocalSourceReadiness.Ready)
+                    {
+                        status = status with { Readiness = LocalSourceReadiness.AwaitingGameSave, Message = AddonReadiness.AwaitingSaveMessage(source) };
+                        issues.Add(new SyncIssue("source_not_initialized", status.Message, source.SourceId));
+                    }
                 }
-                store.WriteSource(effective.SourceId, parsed.Observations);
+                else
+                {
+                    var effective = source;
+                    if (source.SourceId != parsed.SourceId)
+                    {
+                        if (configuration.Sources.Any(s => s.SourceId == parsed.SourceId && s != source)) throw new InvalidDataException("The same logical source is configured more than once.");
+                        effective = source with { SourceId = parsed.SourceId };
+                        configuration = configuration with { Sources = configuration.Sources.Select(s => s == source ? effective : s).ToList() };
+                        PersistConfiguration(); status = status with { SourceId = effective.SourceId };
+                    }
+                    // Metadata diagnoses do not discard or block otherwise valid saved observations.
+                    store.WriteSource(effective.SourceId, parsed.Observations);
+                }
             }
             catch (Exception ex) when (IsRecoverable(ex))
-            { issues.Add(new SyncIssue("source_read_failed", "Quelle konnte nicht vollständig gelesen werden; der letzte gültige Stand bleibt verfügbar: " + ex.Message, source.SourceId)); }
+            {
+                var message = $"{source.Flavor} / {source.AccountName}: Quelle konnte nicht vollständig gelesen werden; der letzte gültige Stand bleibt verfügbar: " + ex.Message;
+                status = status with { Readiness = LocalSourceReadiness.ReadFailed, Message = message };
+                issues.Add(new SyncIssue("source_read_failed", message, source.SourceId));
+            }
+            sourceStatuses.Add(status);
         }
         selected = configuration.Sources.Where(s => s.Enabled).ToArray(); store.RetainSources(selected.Select(s => s.SourceId));
         var own = selected.SelectMany(s => store.ReadSource(s.SourceId)).OrderBy(o => o.SourceId, StringComparer.Ordinal).ThenBy(ObservationRules.Identity, StringComparer.Ordinal).ToList();
@@ -144,7 +170,7 @@ public sealed class CompanionService : IDisposable
         }
         store.Set("managedClients", JsonSerializer.Serialize(managedClients.Order(StringComparer.OrdinalIgnoreCase), JsonContract.Options));
         lastResult = new SyncResult(DateTimeOffset.UtcNow, characters.Count, selected.Length, devices.Count, issues)
-        { CloudPublished = cloudPublished, AddonReady = selected.Length > 0 && !issues.Any(issue => issue.Code is "addon_write_failed" or "source_not_initialized") };
+        { LocalSourceStatuses = sourceStatuses, CloudPublished = cloudPublished, AddonReady = selected.Length > 0 && sourceStatuses.All(source => source.Readiness == LocalSourceReadiness.Ready) && !issues.Any(issue => issue.Code == "addon_write_failed") };
         return lastResult;
     }
     private DeviceSnapshot EnsureLocalSnapshot(List<Observation> own, string groupId)

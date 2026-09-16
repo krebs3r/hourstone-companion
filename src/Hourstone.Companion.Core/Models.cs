@@ -40,6 +40,7 @@ public sealed record SourceConfiguration
     public string Flavor { get; init; } = "";
     public bool Enabled { get; init; } = true;
     [JsonIgnore] public string SavedVariablesPath => Path.Combine(ClientDirectory, "WTF", "Account", AccountName, "SavedVariables", "Hourstone.lua");
+    [JsonIgnore] public string AddonTocPath => Path.Combine(ClientDirectory, "Interface", "AddOns", "Hourstone", "Hourstone.toc");
     [JsonIgnore] public string DataAddonDirectory => Path.Combine(ClientDirectory, "Interface", "AddOns", "Hourstone_Sync");
 }
 
@@ -67,9 +68,13 @@ public sealed record CompanionConfiguration
 }
 
 public sealed record DeviceStatus(string DeviceId, string DeviceName, long Revision, int CharacterCount, DateTimeOffset LastSeen, bool IsLocal);
+public enum LocalSourceReadiness { AddonMissing, AddonOutdated, AwaitingGameSave, Ready, ReadFailed }
+public sealed record LocalSourceStatus(string SourceId, string ClientDirectory, string AccountName, string Flavor,
+    LocalSourceReadiness Readiness, string? DetectedAddonVersion, string? Message = null);
 public sealed record SyncIssue(string Code, string Message, string? SourceId = null);
 public sealed record SyncResult(DateTimeOffset CompletedAt, int CharacterCount, int SourceCount, int DeviceCount, IReadOnlyList<SyncIssue> Issues)
 {
+    public IReadOnlyList<LocalSourceStatus> LocalSourceStatuses { get; init; } = [];
     public bool CloudPublished { get; init; }
     public bool AddonReady { get; init; }
     public bool Success => Issues.Count == 0;

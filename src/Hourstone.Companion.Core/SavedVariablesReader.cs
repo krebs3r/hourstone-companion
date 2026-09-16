@@ -12,8 +12,8 @@ public static class SavedVariablesReader
         var root = new LiteralParser(text).Parse();
         if (!root.TryGetValue("version", out var schema) || schema is not double version || version is not (1 or 2))
             throw new InvalidDataException("Unsupported Hourstone SavedVariables schema (supported: 1 and 2).");
-        var sourceId = String(root, "sourceId", false);
-        if (sourceId.Length > 0 && !ObservationRules.ValidSourceId(sourceId)) throw new InvalidDataException("Invalid source ID.");
+        var sourceId = root.GetValueOrDefault("sourceId") as string ?? "";
+        if (!ObservationRules.ValidSourceId(sourceId)) sourceId = ""; // The addon repairs this on its next in-game save.
         var effectiveId = sourceId.Length > 0 ? sourceId : source.SourceId;
         if (root.GetValueOrDefault("characters") is not Dictionary<string, object?> characters)
             throw new InvalidDataException("SavedVariables must contain a characters table.");

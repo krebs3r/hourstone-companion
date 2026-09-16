@@ -17,6 +17,7 @@ public sealed class SyncIntegrationTests : IDisposable
         var client = Path.Combine(root, device, "WoW", "_retail_");
         var source = Sample.Source(sourceId) with { WoWRoot = Path.Combine(root, device, "WoW"), ClientDirectory = client };
         Directory.CreateDirectory(Path.GetDirectoryName(source.SavedVariablesPath)!); File.WriteAllText(source.SavedVariablesPath, Sample.Lua(source, Sample.Item(sourceId, seconds, guid)));
+        Directory.CreateDirectory(Path.GetDirectoryName(source.AddonTocPath)!); File.WriteAllText(source.AddonTocPath, "## Version: 0.2.0\n");
         service.SaveConfiguration(service.GetConfiguration() with { Sources = [source] }); return source;
     }
     private static DeviceSnapshot ReadPublished(CompanionService service)

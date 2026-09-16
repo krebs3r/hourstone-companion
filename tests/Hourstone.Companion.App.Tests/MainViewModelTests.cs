@@ -127,13 +127,13 @@ public sealed class MainViewModelTests
         Assert.Equal("gerade eben", Assert.Single(model.Rows).Age); model.SetLanguage(true); Assert.Equal("just now", Assert.Single(model.Rows).Age);
     }
     [Theory]
-    [InlineData("retail", "Retail", "R")]
-    [InlineData("mists", "Mists Classic", "M")]
-    [InlineData("tbc", "TBC Anniversary", "T")]
-    [InlineData("era", "Classic Era", "E")]
-    public void SupportedClientFamiliesHaveDistinctDisplayNames(string flavor, string label, string letter)
+    [InlineData("retail", "Retail", "retail.png")]
+    [InlineData("mists", "Mists Classic", "mists.png")]
+    [InlineData("tbc", "TBC Anniversary", "tbc.png")]
+    [InlineData("era", "Classic Era", "era.png")]
+    public void SupportedClientFamiliesHaveDistinctDisplayNames(string flavor, string label, string iconFile)
     {
         var model = new MainViewModel(false); model.SetObservations([Character("Player-1-A", "Aria", flavor)]);
-        var row = Assert.Single(model.Rows); Assert.Equal(label, row.Client); Assert.Equal(letter, row.ClientLetter);
+        var row = Assert.Single(model.Rows); Assert.Equal(label, row.Client); Assert.EndsWith("/Clients/" + iconFile, row.ClientIconPath);
     }
 }

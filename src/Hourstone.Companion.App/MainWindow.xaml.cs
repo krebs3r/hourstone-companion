@@ -2,6 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Data.Common;
+using System.Security;
+using System.Windows.Input;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -27,7 +30,11 @@ public partial class MainWindow : Window
     readonly RegisteredWaitHandle? showWait;
     readonly CancellationTokenSource stopping = new();
     readonly UpdateCoordinator? updater;
+    readonly SyncNoticeTracker syncNotifications = new();
+    WindowWorkArea? windowWorkArea;
     UserSettings preferences;
+    SettingsDraft? settingsDraft;
+    bool savingSettings;
     DateTimeOffset lastScan = DateTimeOffset.MinValue, changed = DateTimeOffset.MaxValue;
     bool quit, quitPending, busy, modalOpen, syncNotice;
     public DateTimeOffset LastInteraction { get; private set; } = DateTimeOffset.UtcNow;
@@ -55,7 +62,7 @@ public partial class MainWindow : Window
         Closing += OnClosing;
         PreviewMouseDown += (_, _) => LastInteraction = DateTimeOffset.UtcNow;
         PreviewKeyDown += (_, _) => LastInteraction = DateTimeOffset.UtcNow;
-        if (demo) { vm.DeviceName = vm.Text("ThisPC"); vm.NotifyDevice(); DeviceNameInput.Text = vm.DeviceName; return; }
+        if (demo) { vm.DeviceName = vm.Text("ThisPC"); vm.NotifyDevice(); DeviceNameInput.Text = vm.DeviceName; InitializeSettingsDraft(); return; }
         Directory.CreateDirectory(UserSettings.DataDirectory);
         service = new(Path.Combine(UserSettings.DataDirectory, "companion.sqlite"));
         vm.DeviceName = service.GetConfiguration().DeviceName; vm.NotifyDevice(); DeviceNameInput.Text = vm.DeviceName;
@@ -72,6 +79,7 @@ public partial class MainWindow : Window
         AutostartChoice.IsEnabled = updater.SupportsAutostart;
         AutostartChoice.ToolTip = vm.English ? "Available after installation." : "Nach Installation verfügbar.";
         if (updater.SupportsAutostart) ApplyAutostart(preferences.Autostart);
+        InitializeSettingsDraft();
         RefreshSources(); RefreshCloud(); RebuildWatchers();
         timer.Tick += async (_, _) =>
         {
@@ -83,13 +91,19 @@ public partial class MainWindow : Window
         SystemEvents.UserPreferenceChanged += OnSystemPreferenceChanged;
         timer.Start(); Dispatcher.InvokeAsync(async () => await ScanAsync());
     }
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        if (!render) windowWorkArea = new WindowWorkArea(this);
+    }
     public void SetLanguage(bool english)
     {
         vm.SetLanguage(english);
-        if (demo) { vm.DeviceName = vm.Text("ThisPC"); vm.NotifyDevice(); DeviceNameInput.Text = vm.DeviceName; }
-        LanguageChoice.SelectedIndex = english ? 1 : 0;
+        if (demo && settingsDraft == null) { vm.DeviceName = vm.Text("ThisPC"); vm.NotifyDevice(); DeviceNameInput.Text = vm.DeviceName; }
         ((ComboBoxItem)ThemeChoice.Items[0]).Content = english ? "Dark" : "Dunkel";
         ((ComboBoxItem)ThemeChoice.Items[1]).Content = english ? "Light" : "Hell";
+        ((ComboBoxItem)ThemeChoice.Items[2]).Content = english ? "Windows setting" : "Windows-Einstellung";
+        RefreshSettingsState();
         if (tray?.ContextMenuStrip is { } menu) { menu.Items[1].Text = vm.Text("CheckNow"); menu.Items[2].Text = english ? "Quit" : "Beenden"; }
         if (CharacterGrid != null) { CharacterGrid.Columns[0].Header = vm.Text("CharacterHeader"); CharacterGrid.Columns[2].Header = vm.Text("TimeHeader"); CharacterGrid.Columns[3].Header = vm.Text("UpdatedHeader"); }
     }
@@ -105,8 +119,12 @@ public partial class MainWindow : Window
         Application.Current.ThemeMode = light ? ThemeMode.Light : ThemeMode.Dark;
 #pragma warning restore WPF0001
         var colors = light ? new Dictionary<string, string> { { "Surface", "#F1F5F9" }, { "Panel", "#FFFFFF" }, { "Sidebar", "#E7EFF5" }, { "Line", "#C4D2DF" }, { "Text", "#182C3C" }, { "Muted", "#526C82" }, { "Gold", "#86610B" }, { "Selection", "#D2EAF5" } } : new Dictionary<string, string> { { "Surface", "#131E29" }, { "Panel", "#182633" }, { "Sidebar", "#152330" }, { "Line", "#304555" }, { "Text", "#ECF3FF" }, { "Muted", "#A6BFD8" }, { "Gold", "#F5CD66" }, { "Selection", "#203F54" } };
+        colors["CaptionHover"] = light ? "#0F000000" : "#1AFFFFFF";
+        colors["CaptionPressed"] = light ? "#0A000000" : "#0FFFFFFF";
+        colors["Error"] = light ? "#B42318" : "#F17D72";
         vm.SetLight(light);
         foreach (var color in colors) Application.Current.Resources[color.Key] = new SolidColorBrush((Color)ColorConverter.ConvertFromString(color.Value));
+        RefreshSettingsState(); RefreshSources(); RefreshCloud();
     }
     void Navigate(object sender, RoutedEventArgs e)
     {
@@ -120,21 +138,59 @@ public partial class MainWindow : Window
         if (page == "Clients") RefreshSources(); if (page == "Sync") RefreshCloud();
     }
     void ShowMain() { Show(); WindowState = WindowState.Normal; Activate(); }
-    void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
-    void Maximize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState == WindowState.Maximized ? WindowState.Normal : WindowState.Maximized;
-    void Close_Click(object sender, RoutedEventArgs e) { if (demo) Quit(); else Hide(); }
+    void Minimize_Click(object sender, RoutedEventArgs e) => SystemCommands.MinimizeWindow(this);
+    void Maximize_Click(object sender, RoutedEventArgs e)
+    {
+        if (WindowState == WindowState.Maximized) SystemCommands.RestoreWindow(this);
+        else SystemCommands.MaximizeWindow(this);
+    }
+    void Close_Click(object sender, RoutedEventArgs e) => SystemCommands.CloseWindow(this);
+    void CaptionButton_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter || sender is not Button button) return;
+        button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); e.Handled = true;
+    }
     void OnClosing(object? sender, CancelEventArgs e) { if (!quit) { e.Cancel = true; if (demo) Quit(); else Hide(); } }
     public void Quit()
     {
         if (busy) { quitPending = true; stopping.Cancel(); Hide(); return; }
         quit = true; SystemEvents.UserPreferenceChanged -= OnSystemPreferenceChanged; timer.Stop(); stopping.Cancel(); foreach (var w in watchers) w.Dispose(); watchers.Clear();
         showWait?.Unregister(null); showSignal?.Dispose(); tray?.Dispose(); service?.Dispose(); stopping.Dispose();
+        windowWorkArea?.Dispose(); windowWorkArea = null;
         Application.Current.Shutdown();
     }
     void Notify(string text)
     {
-        syncNotice = false; NoticeText.Text = text; Notice.Visibility = Visibility.Visible;
+        syncNotice = false; NoticeSourceButton.Visibility = Visibility.Collapsed; NoticeText.Text = text; Notice.Visibility = Visibility.Visible;
         if (!IsVisible && tray != null) { tray.BalloonTipTitle = "Hourstone Companion"; tray.BalloonTipText = text; tray.ShowBalloonTip(6000); }
+    }
+    void UpdateSyncNotice(SyncResult result)
+    {
+        var announce = syncNotifications.Update(result.Issues);
+        if (result.Success)
+        {
+            if (syncNotice) { Notice.Visibility = Visibility.Collapsed; NoticeSourceButton.Visibility = Visibility.Collapsed; syncNotice = false; }
+            return;
+        }
+        // An unchanged background scan must not replace an unrelated update or settings notice.
+        if (!announce && !syncNotice && Notice.Visibility == Visibility.Visible) return;
+        var pending = result.LocalSourceStatuses.Count(status => status.Readiness != LocalSourceReadiness.Ready);
+        var text = pending > 0
+            ? (vm.English ? $"{pending} account source(s) need attention. Open Clients for the next step. Last valid data is kept." : $"{pending} Account-Quelle(n) benötigen Aufmerksamkeit. Unter Clients findest du den nächsten Schritt. Gültige Daten bleiben erhalten.")
+            : (vm.English ? "Sync needs attention. Last valid data is kept. See local diagnostics in Settings." : "Der Abgleich benötigt Aufmerksamkeit. Gültige Daten bleiben erhalten. Details stehen in der lokalen Diagnose unter Einstellungen.");
+        NoticeText.Text = text; Notice.Visibility = Visibility.Visible;
+        NoticeSourceButton.Visibility = pending > 0 ? Visibility.Visible : Visibility.Collapsed; syncNotice = true;
+        if (announce && !IsVisible && tray != null)
+        {
+            tray.BalloonTipTitle = "Hourstone Companion"; tray.BalloonTipText = text; tray.ShowBalloonTip(6000);
+        }
+    }
+    void ShowSources_Click(object sender, RoutedEventArgs e)
+    {
+        ClientsNav.IsChecked = true; RefreshSources();
+        var first = service?.LastResult.LocalSourceStatuses.FirstOrDefault(status => status.Readiness != LocalSourceReadiness.Ready);
+        if (first is not null)
+            Dispatcher.InvokeAsync(() => SourcesPanel.Children.OfType<FrameworkElement>().FirstOrDefault(card => Equals(card.Tag, first.SourceId))?.BringIntoView(), DispatcherPriority.Loaded);
     }
     async Task ScanAsync()
     {
@@ -145,17 +201,15 @@ public partial class MainWindow : Window
             vm.SetObservations(service.GetCharacters());
             vm.Status = vm.Text(result.Success ? (result.SourceCount > 0 ? "Active" : "Unconfigured") : "Attention");
             vm.LastSync = result.AddonReady ? (vm.English ? "Ready for WoW" : "Für WoW bereitgestellt") + " · " + result.CompletedAt.ToLocalTime().ToString("HH:mm") : "";
-            DiagnosticsText.Text = result.Success ? (vm.English ? "Last check completed. No errors." : "Letzte Prüfung abgeschlossen. Keine Fehler.") : string.Join(Environment.NewLine, result.Issues.Select(x => x.Code + ": " + x.Message));
-            if (!result.Success) Notify(vm.English ? "Some data could not be updated. The last valid data is kept. See local diagnostics in Settings." : "Einige Daten konnten nicht aktualisiert werden. Der letzte gültige Stand bleibt erhalten. Details stehen in den Einstellungen unter Lokale Diagnose.");
-            if (result.Success && syncNotice) { Notice.Visibility = Visibility.Collapsed; syncNotice = false; }
-            if (!result.Success) syncNotice = true;
+            DiagnosticsText.Text = SourceStatusPresentation.Diagnostics(result, service.GetConfiguration().Sources, vm.English);
+            UpdateSyncNotice(result);
             if (ClientsPage.IsVisible) RefreshSources();
             RefreshCloud();
         }
         catch (OperationCanceledException) { }
         catch (Exception ex)
-        { vm.Status = vm.Text("Attention"); DiagnosticsText.Text = ex.Message; Notify(vm.English ? "Sync is temporarily unavailable. Your last saved data is kept." : "Der Abgleich ist vorübergehend nicht verfügbar. Dein letzter gespeicherter Stand bleibt erhalten."); }
-        finally { lastScan = DateTimeOffset.UtcNow; changed = DateTimeOffset.MaxValue; vm.IsIdle = true; busy = false; if (quitPending) Quit(); }
+        { vm.Status = vm.Text("Attention"); DiagnosticsText.Text = ex.Message; UpdateSyncNotice(SyncResult.Empty with { Issues = [new SyncIssue("sync_failed", ex.Message)] }); }
+        finally { lastScan = DateTimeOffset.UtcNow; changed = DateTimeOffset.MaxValue; busy = false; vm.IsIdle = true; if (quitPending) Quit(); }
     }
     async void SyncNow_Click(object sender, RoutedEventArgs e) { if (demo) Notify(vm.English ? "Preview with sample data." : "Vorschau mit Beispieldaten."); else await ScanAsync(); }
     void Hours_Click(object sender, RoutedEventArgs e) => vm.SetHours(true);
@@ -208,7 +262,7 @@ public partial class MainWindow : Window
             if (found.Count == 0) { Notify(vm.Text("NoSources") + " " + vm.Text("FirstSave")); return; }
             service.SaveConfiguration(config with { Sources = sources }); Notice.Visibility = Visibility.Collapsed; RefreshSources(); RebuildWatchers();
             await ScanAsync();
-            Notify(vm.English ? "Sources added. Restart WoW once to load the new data addon. Later updates are loaded on login or /reload." : "Quellen hinzugefügt. Starte WoW einmal vollständig neu, damit das neue Datenaddon erkannt wird. Spätere Aktualisierungen werden beim Login oder /reload geladen.");
+            if (service.LastResult.Success) Notify(vm.English ? "Sources added. Restart WoW once to load the new data addon. Later updates are loaded on login or /reload." : "Quellen hinzugefügt. Starte WoW einmal vollständig neu, damit das neue Datenaddon erkannt wird. Spätere Aktualisierungen werden beim Login oder /reload geladen.");
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException) { Notify(ex.Message); }
     }
@@ -229,7 +283,20 @@ public partial class MainWindow : Window
             };
             panel.Children.Add(checkbox);
             panel.Children.Add(new TextBlock { Text = source.ClientDirectory, FontSize = 13, Foreground = (Brush)FindResource("Muted"), TextWrapping = TextWrapping.Wrap });
-            panel.Children.Add(new TextBlock { Text = "Region: " + source.Region, FontSize = 13, Foreground = (Brush)FindResource("Muted"), Margin = new Thickness(0, 10, 0, 0) }); var border = new Border { Style = (Style)FindResource("Card"), Child = panel, Margin = new Thickness(0, 0, 0, 12) }; SourcesPanel.Children.Add(border);
+            panel.Children.Add(new TextBlock { Text = "Region: " + source.Region, FontSize = 13, Foreground = (Brush)FindResource("Muted"), Margin = new Thickness(0, 10, 0, 0) });
+            var status = service.LastResult.LocalSourceStatuses.FirstOrDefault(item => item.SourceId == source.SourceId);
+            if (source.Enabled && status != null)
+            {
+                var title = new TextBlock { Text = SourceStatusPresentation.Title(status, vm.English), FontSize = 16, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 12, 0, 5) };
+                title.SetResourceReference(TextBlock.ForegroundProperty, status.Readiness == LocalSourceReadiness.Ready ? "Text" : "Gold");
+                panel.Children.Add(title);
+                var instruction = new TextBlock { Text = SourceStatusPresentation.Instruction(status, vm.English), FontSize = 14, TextWrapping = TextWrapping.Wrap };
+                instruction.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); panel.Children.Add(instruction);
+            }
+            else panel.Children.Add(new TextBlock { Text = source.Enabled ? (vm.English ? "Waiting for the first check …" : "Warte auf die erste Prüfung …") : (vm.English ? "Not selected for synchronization" : "Nicht für den Abgleich ausgewählt"), FontSize = 14, Margin = new Thickness(0, 12, 0, 0) });
+            var border = new Border { Style = (Style)FindResource("Card"), Child = panel, Tag = source.SourceId, Margin = new Thickness(0, 0, 0, 12) };
+            if (source.Enabled && status is not null && status.Readiness != LocalSourceReadiness.Ready) border.SetResourceReference(Border.BorderBrushProperty, "Gold");
+            SourcesPanel.Children.Add(border);
         }
     }
     void RefreshCloud()
@@ -260,18 +327,76 @@ public partial class MainWindow : Window
     }
     async void Pause_Click(object sender, RoutedEventArgs e) { if (service == null || busy) return; service.PauseCloud(!service.GetConfiguration().CloudPaused); RebuildWatchers(); RefreshCloud(); await ScanAsync(); }
     async void Detach_Click(object sender, RoutedEventArgs e) { if (service == null || busy) return; service.DetachSyncFolder(); RebuildWatchers(); RefreshCloud(); await ScanAsync(); }
+    void InitializeSettingsDraft()
+    {
+        settingsDraft = new(new(vm.DeviceName, preferences.Theme, preferences.Language, preferences.Autostart));
+        DeviceNameInput.TextChanged += SettingsValueChanged;
+        ThemeChoice.SelectionChanged += SettingsValueChanged;
+        LanguageChoice.SelectionChanged += SettingsValueChanged;
+        AutostartChoice.Checked += SettingsValueChanged;
+        AutostartChoice.Unchecked += SettingsValueChanged;
+        vm.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(MainViewModel.IsIdle)) RefreshSettingsState(); };
+        RefreshSettingsState();
+    }
+    void SettingsValueChanged(object sender, RoutedEventArgs e)
+    {
+        if (settingsDraft == null) return;
+        settingsDraft.Update(new(DeviceNameInput.Text, ThemeChoice.SelectedIndex == 1 ? "light" : ThemeChoice.SelectedIndex == 2 ? "system" : "dark", LanguageChoice.SelectedIndex == 1 ? "en" : "de", AutostartChoice.IsChecked == true));
+        RefreshSettingsState();
+    }
+    void RefreshSettingsState()
+    {
+        if (settingsDraft == null || SaveSettingsButton == null) return;
+        SaveSettingsButton.IsEnabled = settingsDraft.CanSave(busy || savingSettings);
+        string? key = settingsDraft.Feedback == SettingsFeedbackState.Failed ? "SettingsSaveFailed"
+            : !settingsDraft.IsValid ? "SettingsInvalidName"
+            : settingsDraft.Feedback == SettingsFeedbackState.Saved ? "SettingsSaved"
+            : settingsDraft.IsDirty ? "SettingsUnsaved" : null;
+        SettingsFeedback.Visibility = key == null ? Visibility.Collapsed : Visibility.Visible;
+        SettingsFeedback.Text = key == null ? "" : vm.Text(key);
+        SettingsFeedback.ToolTip = settingsDraft.FailureDetail;
+        SettingsFeedback.Foreground = (Brush)FindResource(settingsDraft.Feedback == SettingsFeedbackState.Failed || !settingsDraft.IsValid ? "Error" : settingsDraft.IsDirty ? "Muted" : "Cyan");
+    }
     async void SaveSettings_Click(object sender, RoutedEventArgs e)
     {
-        if (demo || service == null || busy) return;
-        var name = DeviceNameInput.Text.Trim(); if (name.Length == 0) { Notify(vm.English ? "Please enter a device name." : "Bitte gib einen Gerätenamen ein."); return; }
+        if (settingsDraft?.CanSave(busy || savingSettings) != true) return;
+        savingSettings = true; RefreshSettingsState();
+        bool saved = false;
         try
         {
-            preferences = preferences with { Theme = ThemeChoice.SelectedIndex == 1 ? "light" : ThemeChoice.SelectedIndex == 2 ? "system" : "dark", Language = LanguageChoice.SelectedIndex == 1 ? "en" : "de", Autostart = AutostartChoice.IsChecked == true };
-            preferences.Save(); service.SaveConfiguration(service.GetConfiguration() with { DeviceName = name }); vm.DeviceName = name; vm.NotifyDevice();
-            SetLanguage(preferences.Language == "en"); ApplyTheme(preferences.Theme); ApplyAutostart(preferences.Autostart); RefreshSources(); RefreshCloud(); await ScanAsync();
+            saved = settingsDraft.Save(PersistSettings);
+            if (!saved) return;
+            var values = settingsDraft.Saved;
+            preferences = values.ToPreferences(); vm.DeviceName = values.DeviceName; vm.NotifyDevice();
+            DeviceNameInput.Text = values.DeviceName;
+            SetLanguage(preferences.Language == "en"); ApplyTheme(preferences.Theme);
+            RefreshSources(); RefreshCloud();
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException) { Notify(ex.Message); }
+        catch (Exception ex) when (IsSettingsPersistenceError(ex)) { }
+        finally { savingSettings = false; RefreshSettingsState(); }
+        if (saved) await ScanAsync();
     }
+    void PersistSettings(SettingsValues values)
+    {
+        if (demo) return;
+        if (service == null) throw new InvalidOperationException("Local settings are unavailable.");
+        var previous = service.GetConfiguration(); var next = values.ToPreferences();
+        try
+        {
+            next.Save(); ApplyAutostart(next.Autostart);
+            service.SaveConfiguration(previous with { DeviceName = values.DeviceName });
+        }
+        catch (Exception ex) when (IsSettingsPersistenceError(ex))
+        {
+            var errors = new List<Exception> { ex };
+            try { preferences.Save(); } catch (Exception rollback) when (IsSettingsPersistenceError(rollback)) { errors.Add(rollback); }
+            try { ApplyAutostart(preferences.Autostart); } catch (Exception rollback) when (IsSettingsPersistenceError(rollback)) { errors.Add(rollback); }
+            try { service.SaveConfiguration(previous); } catch (Exception rollback) when (IsSettingsPersistenceError(rollback)) { errors.Add(rollback); }
+            if (errors.Count > 1) throw new AggregateException("Settings could not be saved or fully restored. The draft is kept; retry saving.", errors);
+            throw;
+        }
+    }
+    static bool IsSettingsPersistenceError(Exception ex) => ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or DbException or SecurityException or AggregateException;
     void ApplyAutostart(bool enabled)
     {
         if (updater?.SupportsAutostart != true) return;
@@ -296,12 +421,38 @@ public partial class MainWindow : Window
         if (!demo) return;
         (page switch { "clients" => ClientsNav, "sync" => SyncNav, "settings" => SettingsNav, _ => OverviewNav }).IsChecked = true;
     }
+    public void SetRenderTheme(string theme)
+    {
+        if (!demo) return;
+        if (theme is not ("dark" or "light" or "system")) throw new ArgumentException("Unknown preview theme.", nameof(theme));
+        ResetDemoPreferences(preferences with { Theme = theme });
+    }
+    public void SetRenderLanguage(bool english)
+    {
+        if (demo) ResetDemoPreferences(preferences with { Language = english ? "en" : "de" });
+    }
+    void ResetDemoPreferences(UserSettings values)
+    {
+        settingsDraft = null; preferences = values;
+        SetLanguage(preferences.Language == "en"); ApplyTheme(preferences.Theme);
+        DeviceNameInput.Text = vm.DeviceName;
+        ThemeChoice.SelectedIndex = preferences.Theme == "light" ? 1 : preferences.Theme == "system" ? 2 : 0;
+        LanguageChoice.SelectedIndex = preferences.Language == "en" ? 1 : 0;
+        AutostartChoice.IsChecked = preferences.Autostart;
+        settingsDraft = new(new(vm.DeviceName, preferences.Theme, preferences.Language, preferences.Autostart));
+        RefreshSettingsState();
+    }
+    public void SetSettingsDraftPreview()
+    {
+        if (!demo) return;
+        DeviceNameInput.Text = "Azeroth Laptop"; ThemeChoice.SelectedIndex = ThemeChoice.SelectedIndex == 1 ? 0 : 1;
+    }
     public void SetLongNamePreview()
     {
         if (demo) vm.SetObservations(MainViewModel.DemoData().Select((o, i) => i == 0 ? o with { Name = new string('W', 64), Realm = "A very long realm name for layout validation" } : o));
     }
     public bool English => vm.English;
-    public bool CanApplyUpdate(DateTimeOffset noticeAt, bool wowRunning) => UpdatePolicy.CanApply(busy, IsVisible, IsActive, modalOpen, LastInteraction, noticeAt, DateTimeOffset.UtcNow, wowRunning);
+    public bool CanApplyUpdate(DateTimeOffset noticeAt, bool wowRunning) => settingsDraft?.IsDirty != true && !savingSettings && UpdatePolicy.CanApply(busy, IsVisible, IsActive, modalOpen, LastInteraction, noticeAt, DateTimeOffset.UtcNow, wowRunning);
     public void PrepareUpdate() { timer.Stop(); }
     public void ResumeAfterUpdateFailure() => timer.Start();
 }

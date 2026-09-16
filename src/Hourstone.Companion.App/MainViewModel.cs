@@ -19,6 +19,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         ["Overview"] = ("Übersicht", "Overview"),
         ["Clients"] = ("Clients", "Clients"),
+        ["ShowSources"] = ("Clients ansehen", "View clients"),
         ["Sync"] = ("Synchronisierung", "Synchronization"),
         ["Settings"] = ("Einstellungen", "Settings"),
         ["Local"] = ("Lokal gespeichert", "Stored locally"),
@@ -49,7 +50,18 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ["Appearance"] = ("Darstellung", "Appearance"),
         ["Language"] = ("Sprache", "Language"),
         ["Autostart"] = ("Mit Windows im Hintergrund starten", "Start in the background with Windows"),
-        ["Save"] = ("Einstellungen speichern", "Save settings"),
+        ["Save"] = ("Änderungen speichern", "Save changes"),
+        ["SaveChanges"] = ("Änderungen speichern", "Save changes"),
+        ["SettingsSaved"] = ("Änderungen gespeichert", "Changes saved"),
+        ["SettingsSaveFailed"] = ("Einstellungen konnten nicht vollständig gespeichert werden. Deine Eingaben bleiben erhalten. Bitte versuche es erneut.", "Settings could not be fully saved. Your entries are kept. Please try again."),
+        ["SettingsInvalidName"] = ("Der Gerätename ist leer, zu lang oder enthält ungültige Zeichen.", "The device name is empty, too long, or contains invalid characters."),
+        ["SettingsUnsaved"] = ("Ungespeicherte Änderungen", "Unsaved changes"),
+        ["SettingsSaveHint"] = ("Änderungen werden erst mit „Änderungen speichern“ übernommen.", "Selections take effect when you choose Save changes."),
+        ["CaptionMinimize"] = ("Minimieren", "Minimize"),
+        ["CaptionMaximize"] = ("Maximieren", "Maximize"),
+        ["CaptionRestore"] = ("Wiederherstellen", "Restore"),
+        ["CaptionClose"] = ("Schließen", "Close"),
+        ["CaptionCloseTooltip"] = ("Schließen (Alt+F4) · im Infobereich weiterlaufen", "Close (Alt+F4) · keep running in the notification area"),
         ["Updates"] = ("Automatische Updates", "Automatic updates"),
         ["UpdateInfo"] = ("Prüfung beim Start und täglich. Neue Versionen werden nach Hinweis installiert, sobald WoW geschlossen und dieses Fenster nicht in Benutzung ist.", "Checked at startup and daily. Updates install after a notice, once WoW is closed and this window is idle."),
         ["CheckUpdate"] = ("Nach Updates suchen", "Check for updates"),
@@ -77,7 +89,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public bool IsLight { get; private set; }
     public void SetLight(bool light) { IsLight = light; RefreshRows(); }
     public bool Demo { get; }
-    public string BuildLabel => Demo ? (English ? "Preview · sample data" : "Vorschau · Beispieldaten") : "v0.1.0";
+    public string BuildLabel => "v" + typeof(MainViewModel).Assembly.GetName().Version!.ToString(3);
+    public string PreviewLabel => Demo ? (English ? "Preview · sample data" : "Vorschau · Beispieldaten") : "";
     List<Observation> observations = [];
     public ObservableCollection<CharacterRow> Rows { get; } = [];
     public ObservableCollection<string> Clients { get; } = [];
@@ -116,7 +129,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         English = english; Changed(nameof(T));
         if (statusKey != null) Status = Text(statusKey);
         LastSync = LastSync.Replace(ready, Text("Ready"), StringComparison.Ordinal);
-        SetObservations(observations.ToArray()); Changed(nameof(BuildLabel));
+        SetObservations(observations.ToArray()); Changed(nameof(BuildLabel)); Changed(nameof(PreviewLabel));
     }
     public void SetHours(bool value) { hours = value; RefreshRows(); Changed(nameof(HoursBackground)); Changed(nameof(HoursForeground)); Changed(nameof(DaysBackground)); Changed(nameof(DaysForeground)); }
     public void NotifyDevice() => Changed(nameof(DeviceName));
@@ -136,6 +149,20 @@ public sealed class MainViewModel : INotifyPropertyChanged
         Changed(nameof(EmptyVisibility)); Changed(nameof(EmptyMessage)); Changed(nameof(RowSummary));
     }
     public static string ClientName(string flavor) => flavor switch { "retail" => "Retail", "mists" => "Mists Classic", "tbc" => "TBC Anniversary", "era" => "Classic Era", _ => flavor };
+    public static List<Observation> AllClassDemoData()
+    {
+        string[] classes = ["WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "DEATHKNIGHT", "SHAMAN", "MAGE", "WARLOCK", "MONK", "DRUID", "DEMONHUNTER", "EVOKER"];
+        string[] flavors = ["retail", "mists", "tbc", "era"];
+        return classes.Select((token, i) => new Observation
+        {
+            SourceId = "sample-source", Region = "eu", Guid = "Player-0000-CLASS" + i,
+            Name = ClassNameForPreview(token), Realm = "Azeroth", Class = token,
+            Flavor = token is "EVOKER" or "DEMONHUNTER" ? "retail" : token is "MONK" or "DEATHKNIGHT" ? "mists" : flavors[i % flavors.Length],
+            Level = 60, Seconds = (13 - i) * 3600, UpdatedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
+        }).ToList();
+    }
+    private static string ClassNameForPreview(string token) => CharacterRow.ClassName(token, false);
+
     public static List<Observation> DemoData()
     {
         string[] names = ["Thalindra", "Morgath", "Lunara", "Elarion", "Schattenwind", "Bronzebart", "Funkenflug", "Fluchmatrose"];
@@ -174,10 +201,9 @@ public sealed class CharacterRow
     public double Seconds => Value.Seconds;
     public double UpdatedAt => Value.UpdatedAt;
     public string Client => MainViewModel.ClientName(Value.Flavor);
-    public string ClientLetter => Value.Flavor switch { "retail" => "R", "mists" => "M", "tbc" => "T", _ => "E" };
-    public string ClientColor => light ? Value.Flavor switch { "retail" => "#90630A", "mists" => "#546C76", "tbc" => "#527617", _ => "#AA3C3C" } : Value.Flavor switch { "retail" => "#F5CD66", "mists" => "#BFCBCE", "tbc" => "#A0CC4C", _ => "#EA6363" };
+    public string ClassIconPath => IconCatalog.ClassIconPath(Value.Class);
+    public string ClientIconPath => IconCatalog.ClientIconPath(Value.Flavor);
     public string Color => light ? Value.Class switch { "DEMONHUNTER" => "#793F9C", "WARRIOR" => "#AD3930", "DRUID" => "#48691C", "MAGE" => "#167395", "ROGUE" => "#687018", "PALADIN" => "#945609", "HUNTER" => "#97541B", "WARLOCK" => "#3A61A6", _ => "#456878" } : Value.Class switch { "DEMONHUNTER" => "#CC91FF", "WARRIOR" => "#F17D72", "DRUID" => "#AAD74B", "MAGE" => "#63D4F3", "ROGUE" => "#D6E67B", "PALADIN" => "#FFBD68", "HUNTER" => "#FBB25B", "WARLOCK" => "#8CB9FF", "PRIEST" => "#E6E6EA", "SHAMAN" => "#71AEF2", "DEATHKNIGHT" => "#EE7182", "MONK" => "#60DAB3", "EVOKER" => "#70C1B0", _ => "#B8CEDC" };
-    public string Glyph => Value.Class switch { "MAGE" => "\uE945", "DRUID" => "\uE8BE", "WARRIOR" => "\uE735", "PALADIN" => "\uE8D7", "HUNTER" => "\uE8B0", _ => "\uE734" };
     public string Time { get; }
     public string Age { get; }
     public CharacterRow(Observation o, MainViewModel m, bool hours)
