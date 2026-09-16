@@ -1,5 +1,9 @@
 # Hourstone Companion 0.1.5
 
+**[Windows-Installer herunterladen](https://github.com/krebs3r/hourstone-companion/releases/download/v0.1.5/HourstoneCompanion-win-Setup.exe)** · **[Portable herunterladen](https://github.com/krebs3r/hourstone-companion/releases/download/v0.1.5/HourstoneCompanion-win-Portable.zip)**
+
+Windows 11 x64 · Für die normale Installation den Installer verwenden. Das Portable-Paket vor dem Start vollständig entpacken.
+
 ## Deutsch
 
 Hourstone Companion ergänzt das WoW-Addon optional um eine App für **Windows 11
@@ -36,6 +40,10 @@ noch nicht praktisch geprüft; eine erfolgreiche automatische Updateinstallation
 von einer zuvor veröffentlichten Version wurde noch nicht nachgewiesen.
 
 ## English
+
+**[Download Windows installer](https://github.com/krebs3r/hourstone-companion/releases/download/v0.1.5/HourstoneCompanion-win-Setup.exe)** · **[Download portable](https://github.com/krebs3r/hourstone-companion/releases/download/v0.1.5/HourstoneCompanion-win-Portable.zip)**
+
+Use the installer for a normal installation. Fully extract the portable package before running it.
 
 Hourstone Companion is an optional **Windows 11 x64** app for the WoW addon.
 Browse saved playtime, classes and guilds across Retail, Mists Classic, TBC

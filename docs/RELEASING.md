@@ -90,9 +90,26 @@ on the reviewed branch, set `tag` to the declared version and `allowUnsigned` to
 require a certificate.
 
 The workflow builds fresh packages, so their embedded release notes match the
-published version. It uploads only the manifest-listed assets, including the
-installer, portable archive, full Velopack update package, feed, checksums and
-license notices. Bundled artwork and file integrity are validated before publishing.
+published version. It uploads exactly five manifest-listed files:
+
+- `HourstoneCompanion-win-Setup.exe` — Windows installer.
+- `HourstoneCompanion-win-Portable.zip` — fully extract before use.
+- `HourstoneCompanion-<version>-full.nupkg` — automatic update package.
+- `releases.win.json` — update feed.
+- `SHA256SUMS` — SHA-256 checksums for the four files above.
+
+Start the release notes with direct installer and portable download links for the
+matching version; provide German and English labels. GitHub adds two source-code
+archives separately. The application and automatic updates use the same package
+files regardless of these presentation links.
+
+License, artwork and dependency notices, the dependency inventory (SBOM), and asset
+and icon manifests remain inside the application packages. They are not uploaded
+again as individual release downloads. `release-manifest.json` remains validation
+evidence in the workflow artifacts; it is not a public release asset. Velopack's
+legacy `RELEASES` file and build-only `assets.win.json` are not published. Hourstone
+uses the modern `releases.win.json` feed and does not migrate Squirrel clients.
+Bundled artwork and file integrity are validated before publishing.
 
 A missing tag is created at the validated commit only after checks succeed. An
 existing tag must match that commit. An empty release draft can be completed;

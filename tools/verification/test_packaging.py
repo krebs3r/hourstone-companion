@@ -13,9 +13,12 @@ POWERSHELL = shutil.which("pwsh") or shutil.which("powershell")
 COMMIT = "1" * 40
 ASSETS = (
     "HourstoneCompanion-0.1.0-full.nupkg", "HourstoneCompanion-win-Portable.zip",
-    "HourstoneCompanion-win-Setup.exe", "RELEASES", "releases.win.json", "assets.win.json",
+    "HourstoneCompanion-win-Setup.exe", "releases.win.json", "SHA256SUMS",
+)
+LOCAL_EVIDENCE = (
+    "RELEASES", "assets.win.json",
     "dependencies.cdx.json", "DEPENDENCY-NOTICES.txt", "ASSET-NOTICES.txt",
-    "assets-manifest.json", "app-icon.json", "LICENSE.txt", "SHA256SUMS",
+    "assets-manifest.json", "app-icon.json", "LICENSE.txt",
 )
 
 STUB = r'''
@@ -130,12 +133,18 @@ class PackagingGates(unittest.TestCase):
         release = root / "artifacts/releases"
         release.mkdir(parents=True)
         shutil.copyfile(ROOT / "tools/publish-release.ps1", root / "tools/publish-release.ps1")
+        shutil.copyfile(ROOT / "tools/release-assets.ps1", root / "tools/release-assets.ps1")
         (root / "fixture.ps1").write_text(STUB, encoding="utf-8")
         entries = []
-        for name in ASSETS:
+        for name in ASSETS[:-1]:
             data = ("Synthetic package fixture: " + name).encode()
             (release / name).write_bytes(data)
             entries.append({"file": name, "sha256": hashlib.sha256(data).hexdigest()})
+        checksum_data = ("\n".join(f"{entry['sha256']}  {entry['file']}" for entry in entries) + "\n").encode()
+        (release / "SHA256SUMS").write_bytes(checksum_data)
+        entries.append({"file": "SHA256SUMS", "sha256": hashlib.sha256(checksum_data).hexdigest()})
+        for name in LOCAL_EVIDENCE:
+            (release / name).write_text("Local evidence fixture: " + name, encoding="utf-8")
         manifest = {"formatVersion": 1, "signed": False, "runtime": "win-x64", "version": "0.1.0", "assets": entries}
         self.write_manifest(root, manifest)
         return root, manifest
@@ -220,7 +229,10 @@ class PackagingGates(unittest.TestCase):
                 self.assertEqual(prepare[prepare.index("--target") + 1], COMMIT)
                 upload = next(call for call in calls if call[:2] == ["release", "upload"])
                 self.assertNotIn("--clobber", upload)
-                self.assertEqual(sum(Path(item).is_file() for item in upload), len(ASSETS) + 1)
+                uploaded_names = {Path(item).name for item in upload if Path(item).is_file()}
+                self.assertEqual(uploaded_names, set(ASSETS))
+                self.assertNotIn("release-manifest.json", uploaded_names)
+                self.assertTrue(uploaded_names.isdisjoint(LOCAL_EVIDENCE))
                 self.assertEqual(calls[-1][:2], ["release", "edit"])
                 self.assertIn("--draft=false", calls[-1])
                 self.assertIn("--latest", calls[-1])
@@ -233,6 +245,67 @@ class PackagingGates(unittest.TestCase):
                 result, calls = self.publish(root, scenario=scenario)
                 self.assert_rejected(result, message)
                 self.assertFalse(any("--draft=false" in call for call in calls))
+
+    def test_checksums_must_describe_exactly_the_four_other_public_assets(self):
+        for change, message in (("extra", "exactly the four"), ("duplicate", "unexpected or duplicate"), ("wrong-hash", "does not match"), ("self", "unexpected or duplicate")):
+            with self.subTest(change=change):
+                root, manifest = self.fixture()
+                checksum_file = root / "artifacts/releases/SHA256SUMS"
+                lines = checksum_file.read_text(encoding="utf-8").splitlines()
+                if change == "extra":
+                    lines.append("0" * 64 + "  LICENSE.txt")
+                elif change == "duplicate":
+                    lines[-1] = lines[0]
+                elif change == "wrong-hash":
+                    lines[0] = "0" * 64 + lines[0][64:]
+                else:
+                    lines[0] = "0" * 64 + "  SHA256SUMS"
+                checksum_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
+                next(entry for entry in manifest["assets"] if entry["file"] == "SHA256SUMS")["sha256"] = hashlib.sha256(checksum_file.read_bytes()).hexdigest()
+                self.write_manifest(root, manifest)
+                result, calls = self.publish(root)
+                self.assert_rejected(result, message)
+                self.assertEqual(calls, [])
+
+    def test_local_evidence_cannot_be_added_to_public_manifest(self):
+        root, manifest = self.fixture()
+        evidence = root / "artifacts/releases/LICENSE.txt"
+        manifest["assets"].append({"file": evidence.name, "sha256": hashlib.sha256(evidence.read_bytes()).hexdigest()})
+        self.write_manifest(root, manifest)
+        result, calls = self.publish(root)
+        self.assert_rejected(result, "Unexpected release asset")
+        self.assertEqual(calls, [])
+
+    def test_packaging_manifest_selects_only_public_files_and_preserves_evidence(self):
+        root, _ = self.fixture()
+        release = root / "artifacts/releases"
+        evidence_before = {name: (release / name).read_bytes() for name in LOCAL_EVIDENCE}
+        (release / "HourstoneCompanion-9.9.9-full.nupkg").write_bytes(b"Other version fixture")
+        (release / "SHA256SUMS").write_text("Previous expanded checksum list", encoding="utf-8")
+        (release / "release-manifest.json").write_text("Previous expanded manifest", encoding="utf-8")
+        wrapper = root / "manifest-fixture.ps1"
+        wrapper.write_text("""$ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'tools/release-assets.ps1')
+Write-PublicReleaseManifest -ReleaseDirectory (Join-Path $PSScriptRoot 'artifacts/releases') -Version '0.1.0' -Signed $false
+""", encoding="utf-8")
+        result = self.run_script(wrapper, cwd=root)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        manifest = json.loads((release / "release-manifest.json").read_text(encoding="utf-8"))
+        self.assertEqual({entry["file"] for entry in manifest["assets"]}, set(ASSETS))
+        self.assertEqual(len(manifest["assets"]), 5)
+        self.assertEqual((manifest["formatVersion"], manifest["version"], manifest["runtime"], manifest["signed"]), (1, "0.1.0", "win-x64", False))
+        for entry in manifest["assets"]:
+            self.assertEqual(entry["sha256"], hashlib.sha256((release / entry["file"]).read_bytes()).hexdigest())
+        checksums = (release / "SHA256SUMS").read_text(encoding="utf-8").splitlines()
+        expected = {f"{hashlib.sha256((release / name).read_bytes()).hexdigest()}  {name}" for name in ASSETS[:-1]}
+        self.assertEqual(set(checksums), expected)
+        self.assertEqual(len(checksums), 4)
+        self.assertEqual(evidence_before, {name: (release / name).read_bytes() for name in LOCAL_EVIDENCE})
+        self.assertTrue((release / "HourstoneCompanion-9.9.9-full.nupkg").is_file())
+        result, calls = self.publish(root)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        uploaded = next(call for call in calls if call[:2] == ["release", "upload"])
+        self.assertEqual({Path(item).name for item in uploaded if Path(item).is_file()}, set(ASSETS))
 
 
 if __name__ == "__main__":

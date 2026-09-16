@@ -15,12 +15,8 @@ if (-not $manifest.signed -and -not $AllowUnsigned) {
 }
 $declaredVersion = ([xml](Get-Content -LiteralPath (Join-Path $repoRoot 'Directory.Build.props') -Raw)).Project.PropertyGroup.Version
 if ($manifest.version -ne $declaredVersion) { throw 'Release manifest version must match Directory.Build.props.' }
-$requiredNames = @(
-    "HourstoneCompanion-$($manifest.version)-full.nupkg", 'HourstoneCompanion-win-Portable.zip',
-    'HourstoneCompanion-win-Setup.exe', 'RELEASES', 'releases.win.json', 'assets.win.json',
-    'dependencies.cdx.json', 'DEPENDENCY-NOTICES.txt', 'ASSET-NOTICES.txt',
-    'assets-manifest.json', 'app-icon.json', 'LICENSE.txt', 'SHA256SUMS'
-)
+. (Join-Path $PSScriptRoot 'release-assets.ps1')
+$requiredNames = @(Get-PublicReleasePayloadNames $manifest.version) + 'SHA256SUMS'
 $assets = [Collections.Generic.List[string]]::new()
 $expectedSizes = [Collections.Generic.Dictionary[string,long]]::new([StringComparer]::Ordinal)
 foreach ($entry in $manifest.assets) {
@@ -38,9 +34,8 @@ foreach ($entry in $manifest.assets) {
     $assets.Add($asset)
     $expectedSizes.Add($entry.file, $file.Length)
 }
-if (@($requiredNames | Where-Object { -not $expectedSizes.ContainsKey($_) }).Count -gt 0) { throw 'The complete installer, portable package, update feed and notices are required.' }
-$assets.Add($manifestPath)
-$expectedSizes.Add('release-manifest.json', (Get-Item -LiteralPath $manifestPath).Length)
+if (@($requiredNames | Where-Object { -not $expectedSizes.ContainsKey($_) }).Count -gt 0) { throw 'The complete installer, portable package, update feed and checksums are required.' }
+Assert-PublicReleaseChecksums -ReleaseDirectory $releaseRoot -Entries $manifest.assets -Version $manifest.version
 $notesPath = Join-Path $repoRoot 'docs/RELEASE-NOTES.md'
 if (-not (Test-Path -LiteralPath $notesPath -PathType Leaf)) { throw 'Release notes are missing.' }
 $head = (& git -C $repoRoot rev-parse HEAD | Out-String).Trim()

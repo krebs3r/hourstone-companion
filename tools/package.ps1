@@ -126,18 +126,8 @@ try {
     $portableArchive = Join-Path $releaseRoot 'HourstoneCompanion-win-Portable.zip'
     [IO.Compression.ZipFile]::ExtractToDirectory($portableArchive, $portableRoot)
     & (Join-Path $PSScriptRoot 'render-smoke.ps1') -Executable (Join-Path $portableRoot 'current/Hourstone.Companion.exe') -OutputDirectory (Join-Path $artifactRoot 'portable-renders') -Scales 1 -Themes 'dark'
-    foreach ($name in @('dependencies.cdx.json', 'DEPENDENCY-NOTICES.txt', 'ASSET-NOTICES.txt', 'assets-manifest.json', 'app-icon.json', 'LICENSE.txt')) {
-        Copy-Item -LiteralPath (Join-Path $packageRoot $name) -Destination (Join-Path $releaseRoot $name)
-    }
-    $entries = @(Get-ChildItem -LiteralPath $releaseRoot -File | Sort-Object Name | ForEach-Object {
-        @{ file = $_.Name; sha256 = (Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant() }
-    })
-    $newline = [string][char]10
-    $checksums = ($entries | ForEach-Object { $_.sha256 + '  ' + $_.file }) -join $newline
-    [IO.File]::WriteAllText((Join-Path $releaseRoot 'SHA256SUMS'), $checksums + $newline, [Text.UTF8Encoding]::new($false))
-    $entries += @{ file = 'SHA256SUMS'; sha256 = (Get-FileHash -LiteralPath (Join-Path $releaseRoot 'SHA256SUMS')).Hash.ToLowerInvariant() }
-    $manifest = @{ formatVersion = 1; version = $Version; runtime = 'win-x64'; signed = -not $Unsigned; assets = $entries }
-    [IO.File]::WriteAllText((Join-Path $releaseRoot 'release-manifest.json'), ($manifest | ConvertTo-Json -Depth 5) + $newline, [Text.UTF8Encoding]::new($false))
+    . (Join-Path $PSScriptRoot 'release-assets.ps1')
+    Write-PublicReleaseManifest -ReleaseDirectory $releaseRoot -Version $Version -Signed (-not $Unsigned)
     Write-Output "PASS package $Version (signed: $(-not $Unsigned)); assets in artifacts/releases"
 } finally {
     if ($removeCertificate -and $certificate) { Remove-Item -LiteralPath ("Cert:\CurrentUser\My\" + $certificate.Thumbprint) -Force }

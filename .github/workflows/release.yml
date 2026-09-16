@@ -85,3 +85,12 @@ jobs:
           } else {
             ./tools/publish-release.ps1 -Tag $env:RELEASE_TAG -Commit $env:GITHUB_SHA
           }
+      - name: Archive release validation evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-validation
+          path: |
+            artifacts/releases/release-manifest.json
+            artifacts/releases/SHA256SUMS
+          if-no-files-found: ignore
