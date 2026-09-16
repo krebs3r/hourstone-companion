@@ -5,6 +5,25 @@
       <Setter Property="TextTrimming" Value="CharacterEllipsis" />
       <Setter Property="ToolTip" Value="{Binding Text,RelativeSource={RelativeSource Self}}" />
     </Style>
+    <Style x:Key="CharacterRowAction" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+      <Setter Property="Width" Value="32" />
+      <Setter Property="Height" Value="32" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderBrush" Value="Transparent" />
+      <Setter Property="Foreground" Value="{DynamicResource Muted}" />
+      <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+      <Style.Triggers>
+        <Trigger Property="IsMouseOver" Value="True">
+          <Setter Property="Foreground" Value="{DynamicResource Text}" />
+        </Trigger>
+        <Trigger Property="IsKeyboardFocused" Value="True">
+          <Setter Property="Foreground" Value="{DynamicResource Cyan}" />
+        </Trigger>
+      </Style.Triggers>
+    </Style>
     <Style x:Key="ProductLinkButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
       <Setter Property="Foreground" Value="{DynamicResource Muted}" />
       <Setter Property="FontSize" Value="12" />
@@ -93,7 +112,7 @@
           <ColumnDefinition Width="256" />
           <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
-        <Border Background="{DynamicResource Sidebar}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
+        <Border x:Name="SidebarBorder" Background="{DynamicResource Sidebar}">
           <Grid>
             <Grid.RowDefinitions>
               <RowDefinition Height="220" />
@@ -307,6 +326,36 @@
                       </DataGridTemplateColumn>
                       <DataGridTextColumn ElementStyle="{StaticResource TableValueText}" Header="Spielzeit" Width="1.1*" Binding="{Binding Time}" SortMemberPath="Seconds" />
                       <DataGridTextColumn ElementStyle="{StaticResource TableValueText}" Header="Aktualisiert" Width="1*" Binding="{Binding Age}" SortMemberPath="UpdatedAt" />
+                      <DataGridTemplateColumn Width="48" CanUserSort="False" CanUserResize="False">
+                        <DataGridTemplateColumn.CellStyle>
+                          <Style TargetType="DataGridCell" BasedOn="{StaticResource {x:Type DataGridCell}}">
+                            <Setter Property="Padding" Value="0" />
+                          </Style>
+                        </DataGridTemplateColumn.CellStyle>
+                        <DataGridTemplateColumn.CellTemplate>
+                          <DataTemplate>
+                            <Button x:Name="CharacterActionButton" Style="{StaticResource CharacterRowAction}" Click="CharacterAction_Click"
+                                    IsEnabled="{Binding DataContext.IsIdle,RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                    ToolTip="{Binding DataContext.CharacterActionLabel,RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                    AutomationProperties.AutomationId="CharacterRowAction"
+                                    AutomationProperties.Name="{Binding DataContext.CharacterActionLabel,RelativeSource={RelativeSource AncestorType=DataGrid}}"
+                                    AutomationProperties.HelpText="{Binding Tooltip}">
+                              <TextBlock FontFamily="Segoe Fluent Icons" FontSize="16" Foreground="{Binding Foreground,RelativeSource={RelativeSource AncestorType=Button}}">
+                                <TextBlock.Style>
+                                  <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="&#xE74D;" />
+                                    <Style.Triggers>
+                                      <DataTrigger Binding="{Binding DataContext.ShowRemoved,RelativeSource={RelativeSource AncestorType=DataGrid}}" Value="True">
+                                        <Setter Property="Text" Value="&#xE7A7;" />
+                                      </DataTrigger>
+                                    </Style.Triggers>
+                                  </Style>
+                                </TextBlock.Style>
+                              </TextBlock>
+                            </Button>
+                          </DataTemplate>
+                        </DataGridTemplateColumn.CellTemplate>
+                      </DataGridTemplateColumn>
                     </DataGrid.Columns>
                   </DataGrid>
                   <StackPanel x:Name="EmptyState" Visibility="{Binding EmptyVisibility}" HorizontalAlignment="Center" VerticalAlignment="Center" MaxWidth="550">
@@ -314,11 +363,7 @@
                     <TextBlock Text="{Binding EmptyMessage}" Foreground="{DynamicResource Muted}" TextWrapping="Wrap" TextAlignment="Center" Margin="16" />
                   </StackPanel>
                   <Border Grid.Row="1" BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0" Padding="20,0">
-                    <Grid>
-                      <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                      <TextBlock Text="{Binding RowSummary}" Foreground="{DynamicResource Muted}" FontSize="14" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip="{Binding T[RemovalHint]}" />
-                      <Button x:Name="CharacterActionButton" Grid.Column="1" Content="{Binding CharacterActionLabel}" Click="CharacterAction_Click" IsEnabled="{Binding CanChangeCharacter}" ToolTip="{Binding T[RemovalHint]}" Padding="10,4" Margin="12,3,0,3" />
-                    </Grid>
+                    <TextBlock Text="{Binding RowSummary}" Foreground="{DynamicResource Muted}" FontSize="14" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" ToolTip="{Binding T[RemovalHint]}" />
                   </Border>
                 </Grid>
               </Border>
@@ -438,7 +483,7 @@
                     </StackPanel>
                   </Border>
                   <TextBlock Text="{Binding T[Diagnostics]}" FontSize="24" FontWeight="SemiBold" Margin="0,24,0,8" />
-                  <TextBox x:Name="DiagnosticsText" IsReadOnly="True" TextWrapping="Wrap" MinHeight="90" VerticalScrollBarVisibility="Auto" />
+                  <TextBox x:Name="DiagnosticsText" FontFamily="Consolas" IsReadOnly="True" TextWrapping="Wrap" MinHeight="90" VerticalScrollBarVisibility="Auto" />
                 </StackPanel>
               </ScrollViewer>
             </Grid>

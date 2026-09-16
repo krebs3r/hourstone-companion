@@ -7,7 +7,7 @@ own PCs through a locally available Dropbox or OneDrive folder.
 [Download Hourstone Companion for Windows](https://github.com/krebs3r/hourstone-companion/releases/latest)
 
 Choose the **Setup.exe** installer or fully extract the **Portable.zip** package.
-The .NET runtime is included. **Version 0.1.5 is an unsigned early release.**
+The .NET runtime is included. **Version 0.1.6 is an unsigned early release.**
 End-to-end Dropbox and OneDrive exchange between two PCs has not yet been
 practically validated. See the [release notes](docs/RELEASE-NOTES.md).
 
@@ -58,9 +58,10 @@ the character is offline. Guild changes synchronize independently of playtime.
 Update the companion to 0.1.3 or later on every PC before exchanging protocol 3
 snapshots. Earlier snapshots and existing settings and databases remain readable.
 
-Select a character and choose **Delete from overview** to exclude it from the
-list and its total, after confirmation. The WoW character and saved playtime are
-kept. **Deleted characters** opens the list with **Restore character**.
+Use the trash icon to the right of a character's last update to exclude it from
+the list and its total, after confirmation. No row selection is required. The WoW
+character and saved playtime are kept. **Deleted characters** opens the list with
+a **Restore character** icon in the same position on each row.
 
 ![Deleted characters with sample data](docs/assets/removed-characters.png)
 

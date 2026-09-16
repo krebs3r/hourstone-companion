@@ -238,18 +238,24 @@ public partial class MainWindow : Window
     }
     async void CharacterAction_Click(object sender, RoutedEventArgs e)
     {
-        if (!vm.CanChangeCharacter || vm.SelectedRow is not { } row) return;
-        bool remove = !vm.ShowRemoved;
-        if (remove)
+        e.Handled = true;
+        await ChangeCharacterAsync(sender, ConfirmCharacterRemoval);
+    }
+    bool ConfirmCharacterRemoval(CharacterRow row)
+    {
+        modalOpen = true;
+        try
         {
-            modalOpen = true;
-            try
-            {
-                if (MessageBox.Show(this, string.Format(vm.Culture, vm.Text("RemoveConfirmation"), row.Name + " · " + row.Client + " · " + row.Value.Realm),
-                    vm.Text("RemoveCharacter"), MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) != MessageBoxResult.Yes) return;
-            }
-            finally { modalOpen = false; LastInteraction = DateTimeOffset.UtcNow; }
+            return MessageBox.Show(this, string.Format(vm.Culture, vm.Text("RemoveConfirmation"), row.Name + " · " + row.Client + " · " + row.Value.Realm),
+                vm.Text("RemoveCharacter"), MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) == MessageBoxResult.Yes;
         }
+        finally { modalOpen = false; LastInteraction = DateTimeOffset.UtcNow; }
+    }
+    internal async Task ChangeCharacterAsync(object sender, Func<CharacterRow, bool> confirmRemoval)
+    {
+        if (!vm.IsIdle || modalOpen || sender is not FrameworkElement { DataContext: CharacterRow row }) return;
+        bool remove = !vm.ShowRemoved;
+        if (remove && !confirmRemoval(row)) return;
         try
         {
             if (demo)

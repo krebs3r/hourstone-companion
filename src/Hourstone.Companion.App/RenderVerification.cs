@@ -30,8 +30,8 @@ public sealed record RenderProfile(string? ClientsState, bool Selected, int Sele
         var selected = arguments.Contains("--selected") || arguments.Contains("--removed");
         var columnValue = Value("--selection-column");
         var column = 0;
-        if (columnValue is not null && (!int.TryParse(columnValue, NumberStyles.None, CultureInfo.InvariantCulture, out column) || column is < 0 or > 3))
-            throw new ArgumentException("Render selection column must be 0 through 3.");
+        if (columnValue is not null && (!int.TryParse(columnValue, NumberStyles.None, CultureInfo.InvariantCulture, out column) || column is < 0 or > 4))
+            throw new ArgumentException("Render selection column must be 0 through 4.");
         var unfocused = arguments.Contains("--selection-unfocused");
         if (!selected && (columnValue is not null || unfocused)) throw new ArgumentException("Selection options require a selected character preview.");
         if (state is not null && selected) throw new ArgumentException("Client setup and character selection require separate previews.");
@@ -48,6 +48,12 @@ public static class RenderVerification
     {
         if (profile.ClientsState is not null) window.SetClientsPreview(profile.ClientsState);
         if (profile.SyncState is not null) window.SetSyncPreview(profile.SyncState);
+        if (Named<FrameworkElement>(window, "SettingsPage").IsVisible)
+        {
+            var diagnostics = Named<TextBox>(window, "DiagnosticsText");
+            diagnostics.Text = SourceStatusPresentation.Diagnostics(Hourstone.Companion.Core.SyncResult.Empty, [], window.English);
+            diagnostics.BringIntoView();
+        }
         if (profile.Selected)
         {
             var grid = Named<DataGrid>(window, "CharacterGrid");
@@ -56,7 +62,7 @@ public static class RenderVerification
             grid.CurrentCell = new DataGridCellInfo(grid.Items[0], grid.Columns[profile.SelectionColumn]);
             grid.ScrollIntoView(grid.Items[0], grid.Columns[profile.SelectionColumn]);
             grid.UpdateLayout();
-            if (profile.SelectionUnfocused) Named<Button>(window, "CharacterActionButton").Focus();
+            if (profile.SelectionUnfocused) RowAction(grid, grid.Items[0]).Focus();
             else
             {
                 var row = grid.ItemContainerGenerator.ContainerFromIndex(0) as DataGridRow;
@@ -69,6 +75,45 @@ public static class RenderVerification
     public static IReadOnlyList<string> Verify(MainWindow window, RenderProfile profile)
     {
         var checks = new List<string>();
+        if (profile.Selected)
+        {
+            VerifyCharacterActions(window);
+            Prepare(window, profile);
+            window.ChromeRoot.UpdateLayout();
+            checks.Add("row-actions-target-and-confirm-character");
+        }
+        Require(Named<Border>(window, "SidebarBorder").BorderThickness == new Thickness(0), "Sidebar still draws a separator.");
+        checks.Add("sidebar-without-separator");
+        Require(Named<TextBox>(window, "DiagnosticsText").FontFamily.Source == "Consolas", "Diagnostics must use Consolas.");
+        checks.Add("diagnostics-monospace");
+        if (Named<FrameworkElement>(window, "SettingsPage").IsVisible)
+        {
+            VisibleBounds(window, Named<TextBox>(window, "DiagnosticsText"));
+            checks.Add("diagnostics-visible-and-unclipped");
+        }
+
+        var characterGrid = Named<DataGrid>(window, "CharacterGrid");
+        if (characterGrid.IsVisible && characterGrid.Items.Count > 0)
+        {
+            var model = (MainViewModel)window.DataContext;
+            var action = RowAction(characterGrid, characterGrid.Items[0]);
+            var bounds = VisibleBounds(window, action);
+            var row = (DataGridRow)characterGrid.ItemContainerGenerator.ContainerFromIndex(0);
+            var rowBounds = row.TransformToAncestor(window.ChromeRoot).TransformBounds(new Rect(row.RenderSize));
+            Require(action.ActualWidth == 32 && action.ActualHeight == 32 &&
+                Math.Abs(bounds.Top + bounds.Height / 2 - rowBounds.Top - rowBounds.Height / 2) <= 1,
+                "Character action must have a centered 32 by 32 hit target.");
+            Require(action.IsEnabled && action.Focusable && action.IsTabStop && ReferenceEquals(action.DataContext, row.Item),
+                "Character action must be available without selection and target its own row.");
+            Require((string?)action.ToolTip == model.CharacterActionLabel && AutomationProperties.GetName(action) == model.CharacterActionLabel,
+                "Character action tooltip and accessible name must describe the current localized action.");
+            var glyph = (TextBlock)action.Content;
+            Require(glyph.FontSize == 16 && glyph.Text == (model.ShowRemoved ? "\uE7A7" : "\uE74D"), "Wrong character action icon.");
+            if (profile.SelectionUnfocused)
+                Require(action.IsKeyboardFocused && SameColor(action.Foreground, window.FindResource("Cyan") as Brush),
+                    "Character action keyboard focus must be visible.");
+            checks.Add("row-actions-visible-and-accessible");
+        }
         var note = Named<TextBlock>(window, "FooterNote");
         var credits = Named<FrameworkElement>(window, "FooterCredits");
         var noteBounds = VisibleBounds(window, note);
@@ -180,6 +225,65 @@ public static class RenderVerification
             checks.Add("sync-" + profile.SyncState + "-explanations-accessible");
         }
         return checks;
+    }
+
+    private static Button RowAction(DataGrid grid, object item)
+    {
+        grid.ScrollIntoView(item, grid.Columns[^1]);
+        grid.UpdateLayout();
+        var row = grid.ItemContainerGenerator.ContainerFromItem(item) as DataGridRow
+            ?? throw new InvalidOperationException("Character action row was not realized.");
+        return Descendants<Button>(row).Single(button => AutomationProperties.GetAutomationId(button) == "CharacterRowAction");
+    }
+
+    private static void VerifyCharacterActions(MainWindow window)
+    {
+        var model = (MainViewModel)window.DataContext;
+        Require(model.Demo, "Character action verification requires synthetic data.");
+        var visible = model.VisibleObservations;
+        var removed = model.RemovedObservations;
+        var showRemoved = model.ShowRemoved;
+        var grid = Named<DataGrid>(window, "CharacterGrid");
+        try
+        {
+            model.ShowRemoved = false;
+            model.SetObservations(MainViewModel.DemoData(), []);
+            model.SelectedRow = model.Rows[0];
+            var selected = model.SelectedRow.Value;
+            var target = model.Rows[1];
+            var action = RowAction(grid, target);
+            bool confirmed = false;
+            bool Confirm(CharacterRow row)
+            {
+                Require(row.Value == target.Value, "Confirmation refers to a selected character instead of the clicked row.");
+                confirmed = true;
+                return true;
+            }
+            model.IsIdle = false;
+            grid.UpdateLayout();
+            Require(!action.IsEnabled, "Character action is enabled during a sync.");
+            window.ChangeCharacterAsync(action, Confirm).GetAwaiter().GetResult();
+            Require(!confirmed && model.RemovedObservations.Count == 0, "Busy character action was not blocked.");
+            model.IsIdle = true;
+            bool cancelled = false;
+            window.ChangeCharacterAsync(action, row => { cancelled = true; return false; }).GetAwaiter().GetResult();
+            Require(cancelled && model.RemovedObservations.Count == 0 && model.VisibleObservations.Contains(target.Value),
+                "Cancelled deletion changed the character list.");
+            window.ChangeCharacterAsync(action, Confirm).GetAwaiter().GetResult();
+            Require(confirmed && model.RemovedObservations.Single() == target.Value && model.VisibleObservations.Contains(selected),
+                "Deletion changed the selected character instead of the clicked row.");
+            model.ShowRemoved = true;
+            Require(model.SelectedRow is null, "Restore preview unexpectedly has a selected row.");
+            RowAction(grid, model.Rows.Single()).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            Require(model.RemovedObservations.Count == 0 && model.VisibleObservations.Contains(target.Value),
+                "Restore icon did not restore its character without selection.");
+        }
+        finally
+        {
+            model.IsIdle = true;
+            model.SetObservations(visible, removed);
+            model.ShowRemoved = showRemoved;
+        }
     }
 
     private static T Named<T>(MainWindow window, string name) where T : FrameworkElement =>

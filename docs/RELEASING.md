@@ -25,7 +25,7 @@ manual Release workflow with `allowUnsigned: true`. Package validation, privacy
 checks and release-asset integrity checks still apply. Release notes must clearly
 state that the packages are unsigned and list material validation gaps.
 
-The 0.1.5 early release uses this unsigned path. Two-device provider testing remains
+The 0.1.6 early release uses this unsigned path. Two-device provider testing remains
 outstanding; it is not reported as passed. Configure release-environment protection
 rules when establishing the signed distribution process.
 
@@ -63,7 +63,7 @@ be provisioned separately; the repository does not contain one.
 - Confirm reloads, zone changes, old files and a running session do not restore it.
 - Test simultaneous offline removals/restorations and copied local data, plus
   source deselection and switching to a different group without unrelated controls.
-- Upgrade an existing 0.1.4 installation, preserving settings and measurements.
+- Upgrade an existing 0.1.5 installation, preserving settings and measurements.
 - Verify CurseForge and both GitHub links open the correct default-browser pages.
 - Check mouse and keyboard selection in both character lists, including sorting
   and moving focus to an action without losing the full-row underline.
