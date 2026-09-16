@@ -17,8 +17,8 @@ public sealed class RenderProfileTests
     [Fact]
     public void RemovedListAndLastColumnSelectionUseTheSameSelectionChecks()
     {
-        var profile = RenderProfile.Parse(["--removed", "--selection-column", "3", "--selection-unfocused"]);
-        Assert.True(profile.Selected); Assert.Equal(3, profile.SelectionColumn); Assert.True(profile.SelectionUnfocused);
+        var profile = RenderProfile.Parse(["--removed", "--selection-column", "4", "--selection-unfocused"]);
+        Assert.True(profile.Selected); Assert.Equal(4, profile.SelectionColumn); Assert.True(profile.SelectionUnfocused);
         Assert.Null(profile.ClientsState);
     }
 
@@ -42,7 +42,7 @@ public sealed class RenderProfileTests
     [InlineData("--clients-state", "ready")]
     [InlineData("--selection-column", "1")]
     [InlineData("--selection-unfocused")]
-    [InlineData("--selected", "--selection-column", "4")]
+    [InlineData("--selected", "--selection-column", "5")]
     [InlineData("--selected", "--selection-column", "-1")]
     [InlineData("--selected", "--clients-state", "empty")]
     [InlineData("--sync-state")]

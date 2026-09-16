@@ -68,7 +68,7 @@ if ($Extended) {
             Invoke-RenderCase -Name "selected-$theme-$scale" -Theme $theme -Scale $scale -ExtraArguments @('--selected', '--selection-column', '2')
         }
     }
-    foreach ($column in @(0, 1, 3)) {
+    foreach ($column in @(0, 1, 3, 4)) {
         Invoke-RenderCase -Name "selected-column-$column" -Theme dark -Scale 1 -ExtraArguments @('--selected', '--selection-column', "$column")
     }
     foreach ($theme in @('dark', 'light')) {
