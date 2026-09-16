@@ -1,0 +1,24 @@
+{
+  "source": "src/Hourstone.Companion.App/Assets/Logo.png",
+  "source_sha256": "3b7f92b8bf6183a2ca90324ff18d3744803fedf51c2ca2dbf4cf3268fc5f93a5",
+  "file": "src/Hourstone.Companion.App/Assets/Hourstone.ico",
+  "sha256": "89b273ce5c0598dda2734d08138e0f3033fe3d375ad9461ceb82339d48a0b1eb",
+  "sizes": [
+    16,
+    20,
+    24,
+    32,
+    40,
+    48,
+    64,
+    128,
+    256
+  ],
+  "source_crop": [
+    103,
+    72,
+    1194,
+    1163
+  ],
+  "transformation": "Approximately 15% larger visible motif; original logo, colors and aspect ratio retained. Independently resampled PNG frames in ICO."
+}

@@ -31,6 +31,25 @@
         </Setter.Value>
       </Setter>
     </Style>
+    <Style x:Key="FooterLinkButton" TargetType="Button" BasedOn="{StaticResource ProductLinkButton}">
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="FooterLinkSurface" Padding="{TemplateBinding Padding}" Background="Transparent">
+              <TextBlock x:Name="FooterLinkText" Text="{TemplateBinding Content}" FontSize="{TemplateBinding FontSize}" Foreground="{TemplateBinding Foreground}" VerticalAlignment="Center" />
+            </Border>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter Property="Foreground" Value="{DynamicResource Text}" />
+              </Trigger>
+              <Trigger Property="IsKeyboardFocused" Value="True">
+                <Setter Property="Foreground" Value="{DynamicResource Gold}" />
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
   </Window.Resources>
   <shell:WindowChrome.WindowChrome>
     <shell:WindowChrome CaptionHeight="44" ResizeBorderThickness="6" CornerRadius="10" GlassFrameThickness="0" UseAeroCaptionButtons="False" />
@@ -154,7 +173,7 @@
                   <TextBlock Text="{Binding T[Subtitle]}" Foreground="{DynamicResource Muted}" FontSize="23" Margin="0,2,0,0" />
                 </StackPanel>
                 <StackPanel Grid.Column="1" HorizontalAlignment="Right">
-                  <Button Click="SyncNow_Click" IsEnabled="{Binding IsIdle}" Padding="22,10" Margin="0,0,0,14">
+                  <Button x:Name="SyncNowButton" Click="SyncNow_Click" IsEnabled="{Binding IsIdle}" ToolTip="{Binding T[CheckTooltip]}" AutomationProperties.Name="{Binding T[CheckNow]}" AutomationProperties.HelpText="{Binding T[CheckTooltip]}" Padding="22,10" Margin="0,0,0,14">
                     <StackPanel Orientation="Horizontal">
                       <TextBlock Text="" Style="{StaticResource Glyph}" FontSize="23" Margin="0,0,13,0" />
                       <TextBlock Text="{Binding T[CheckNow]}" FontWeight="SemiBold" />
@@ -243,8 +262,8 @@
                 <ComboBox Grid.Column="4" ItemsSource="{Binding Realms}" SelectedItem="{Binding SelectedRealm}" AutomationProperties.Name="Realm" />
                 <Border Grid.Column="6" Style="{StaticResource Card}" Padding="4">
                   <UniformGrid Columns="2">
-                    <Button Content="{Binding T[Hours]}" Click="Hours_Click" Background="{Binding HoursBackground}" Foreground="{Binding HoursForeground}" BorderThickness="0" Padding="5" />
-                    <Button Content="{Binding T[Days]}" Click="Days_Click" Background="{Binding DaysBackground}" Foreground="{Binding DaysForeground}" BorderThickness="0" Padding="5" />
+                    <Button x:Name="HoursButton" Style="{StaticResource TimeFormatButton}" Content="{Binding T[Hours]}" Click="Hours_Click" Tag="{Binding IsHours}" Background="{Binding HoursBackground}" Foreground="{Binding HoursForeground}" />
+                    <Button x:Name="DaysButton" Style="{StaticResource TimeFormatButton}" Content="{Binding T[Days]}" Click="Days_Click" Tag="{Binding IsDays}" Background="{Binding DaysBackground}" Foreground="{Binding DaysForeground}" />
                   </UniformGrid>
                 </Border>
               </Grid>
@@ -330,18 +349,43 @@
               <StackPanel>
                 <TextBlock Text="{Binding T[Sync]}" FontSize="40" FontWeight="Bold" />
                 <TextBlock Text="{Binding T[SyncIntro]}" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,10,0,24" />
-                <Border Style="{StaticResource Card}">
+                <Border x:Name="SyncSetupCard" Style="{StaticResource Card}" Margin="0,0,0,16">
                   <StackPanel>
-                    <TextBlock Text="{Binding T[Folder]}" FontWeight="SemiBold" />
-                    <TextBlock x:Name="PublicationText" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,10,0,0" />
-                    <TextBlock x:Name="WoWStatusText" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,8,0,0" />
-                    <TextBlock x:Name="FolderText" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,10,0,20" />
+                    <Grid>
+                      <Grid.ColumnDefinitions><ColumnDefinition Width="28" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                      <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                      <TextBlock Text="1" Foreground="{DynamicResource Cyan}" FontWeight="SemiBold" />
+                      <TextBlock x:Name="SyncStepFirstText" Grid.Column="1" Text="{Binding T[SyncStepFirst]}" TextWrapping="Wrap" Margin="0,0,0,12" />
+                      <TextBlock Grid.Row="1" Text="2" Foreground="{DynamicResource Cyan}" FontWeight="SemiBold" />
+                      <TextBlock x:Name="SyncStepOtherText" Grid.Row="1" Grid.Column="1" Text="{Binding T[SyncStepOther]}" TextWrapping="Wrap" Margin="0,0,0,12" />
+                      <TextBlock Grid.Row="2" Text="3" Foreground="{DynamicResource Cyan}" FontWeight="SemiBold" />
+                      <TextBlock x:Name="SyncStepAvailabilityText" Grid.Row="2" Grid.Column="1" Text="{Binding T[SyncStepAvailability]}" TextWrapping="Wrap" />
+                    </Grid>
+                    <TextBlock x:Name="SyncAccountHintText" Text="{Binding T[SyncAccountHint]}" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,16,0,6" />
+                    <TextBlock x:Name="SyncLocalHintText" Text="{Binding T[SyncLocalHint]}" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" />
+                  </StackPanel>
+                </Border>
+                <Border x:Name="SyncFolderCard" Style="{StaticResource Card}" Margin="0,0,0,16">
+                  <StackPanel>
+                    <TextBlock Text="{Binding T[SyncFolderLabel]}" FontSize="20" FontWeight="SemiBold" />
+                    <Border Background="{DynamicResource Surface}" CornerRadius="4" Padding="12" Margin="0,10,0,12">
+                      <TextBlock x:Name="FolderText" TextWrapping="Wrap" FontWeight="SemiBold" ToolTip="{Binding Text,RelativeSource={RelativeSource Self}}" />
+                    </Border>
                     <WrapPanel>
-                      <Button Content="{Binding T[ChooseFolder]}" Click="ChooseFolder_Click" Margin="0,0,12,12" />
-                      <Button x:Name="PauseButton" Content="{Binding T[Pause]}" Click="Pause_Click" Margin="0,0,12,12" />
-                      <Button Content="{Binding T[Detach]}" Click="Detach_Click" Margin="0,0,0,12" />
+                      <Button x:Name="ChooseFolderButton" Content="{Binding T[ChooseFolder]}" Click="ChooseFolder_Click" Margin="0,0,12,12" />
+                      <Button x:Name="PauseButton" Content="{Binding T[Pause]}" Click="Pause_Click" ToolTip="{Binding T[SyncPauseHint]}" Margin="0,0,12,12" />
+                      <Button x:Name="DetachButton" Content="{Binding T[Detach]}" Click="Detach_Click" Margin="0,0,0,12" />
                     </WrapPanel>
-                    <TextBlock Text="{Binding T[OfflineFolder]}" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" />
+                    <TextBlock x:Name="PublicationText" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" />
+                    <TextBlock x:Name="SyncPauseHintText" Text="{Binding T[SyncPauseHint]}" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,8,0,0" />
+                  </StackPanel>
+                </Border>
+                <Border x:Name="SyncWoWCard" Style="{StaticResource Card}">
+                  <StackPanel>
+                    <TextBlock Text="{Binding T[SyncWoWTitle]}" FontSize="20" FontWeight="SemiBold" />
+                    <TextBlock x:Name="WoWStatusText" TextWrapping="Wrap" Margin="0,10,0,10" />
+                    <TextBlock x:Name="SyncWoWLoadHintText" Text="{Binding T[SyncWoWLoadHint]}" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" />
+                    <TextBlock x:Name="SyncCheckHint" Text="{Binding T[CheckSaveHint]}" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" Margin="0,12,0,0" />
                   </StackPanel>
                 </Border>
                 <TextBlock Text="{Binding T[Devices]}" FontSize="24" FontWeight="SemiBold" Margin="0,25,0,15" />
@@ -388,6 +432,7 @@
                     <StackPanel>
                       <TextBlock Text="{Binding T[Updates]}" FontSize="20" FontWeight="SemiBold" />
                       <TextBlock Text="{Binding T[UpdateInfo]}" Foreground="{DynamicResource Muted}" TextWrapping="Wrap" Margin="0,10,0,15" />
+                      <TextBlock x:Name="AddonUpdateHintText" Text="{Binding T[AddonUpdateHint]}" Foreground="{DynamicResource Muted}" TextWrapping="Wrap" Margin="0,0,0,15" />
                       <Button Content="{Binding T[CheckUpdate]}" Click="CheckUpdate_Click" HorizontalAlignment="Left" />
                       <TextBlock x:Name="UpdateText" Foreground="{DynamicResource Muted}" TextWrapping="Wrap" Margin="0,10,0,0" />
                     </StackPanel>
@@ -414,9 +459,10 @@
               </Grid>
               <StackPanel x:Name="FooterCredits" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                 <TextBlock Text="{Binding PreviewLabel}" Foreground="{DynamicResource Muted}" FontSize="11" Margin="0,0,12,0" VerticalAlignment="Center" />
-                <Button x:Name="FooterGitHubButton" Content="GitHub" Style="{StaticResource ProductLinkButton}" Tag="{x:Static local:ProductLink.CompanionGitHub}" Click="OpenProductLink_Click" ToolTip="{Binding T[CompanionGitHubTooltip]}" AutomationProperties.Name="{Binding T[CompanionGitHubTooltip]}" AutomationProperties.HelpText="{Binding T[ExternalBrowserHint]}" />
+                <Button x:Name="FooterGitHubButton" Content="GitHub" Style="{StaticResource FooterLinkButton}" Tag="{x:Static local:ProductLink.CompanionGitHub}" Click="OpenProductLink_Click" ToolTip="{Binding T[CompanionGitHubTooltip]}" AutomationProperties.Name="{Binding T[CompanionGitHubTooltip]}" AutomationProperties.HelpText="{Binding T[ExternalBrowserHint]}" />
                 <TextBlock Text="·" Foreground="{DynamicResource Muted}" FontSize="12" Margin="7,0" VerticalAlignment="Center" />
-                <TextBlock Text="{Binding BuildLabel}" Foreground="{DynamicResource Muted}" FontSize="12" VerticalAlignment="Center" Margin="0,0,10,0" />
+                <TextBlock Text="{Binding BuildLabel}" Foreground="{DynamicResource Muted}" FontSize="12" VerticalAlignment="Center" />
+                <TextBlock Text="·" Foreground="{DynamicResource Muted}" FontSize="12" Margin="7,0" VerticalAlignment="Center" />
                 <TextBlock Text="with" Foreground="{DynamicResource Muted}" FontSize="12" Margin="0,0,5,0" VerticalAlignment="Center" />
                 <Image Source="Assets/Heart.png" Width="13" Height="13" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" Margin="0,0,5,0" AutomationProperties.Name="love" />
                 <TextBlock Text="by krebs3r" Foreground="{DynamicResource Muted}" FontSize="12" VerticalAlignment="Center" />

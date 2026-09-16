@@ -21,7 +21,10 @@ standard-library-only check verifies the complete catalog of 13 class icons, fou
 client icons, the heart and the unknown marker against `docs/assets-manifest.json`.
 It checks SHA-256, PNG chunk checksums, decoded image data and dimensions, and rejects
 missing, extra or changed catalog files. CI and the package script both run this gate.
-Intentional artwork changes must update the asset manifest and `docs/ASSETS.md`.
+The Windows ICO is also verified against `docs/app-icon.json`, including all nine
+resolutions and its unchanged logo source. To regenerate it, install Pillow 12.3.0
+and run `python tools/build_app_icon.py`; Pillow is not needed for normal builds.
+Intentional artwork changes must update the asset manifests and `docs/ASSETS.md`.
 
 ## UI checks
 
@@ -34,7 +37,9 @@ pwsh -File tools/render-smoke.ps1 -Extended
 
 The script renders dark and light themes at 100%, 150% and 200% scaling and validates
 PNG dimensions. Selected rows and the footer have layout assertions; empty, missing
-and outdated source profiles verify the acquisition actions. Settings, compact layouts and the full icon catalog also have
+and outdated source profiles verify the acquisition actions. Synchronization
+profiles cover disconnected, connected, paused and failed exchange, and unchanged
+data. Ordinary button states and selected/inactive time formats are checked separately. Settings, compact layouts and the full icon catalog also have
 synthetic render profiles with guilds, guildless characters and missing guild information. These checks demonstrate rendering and output integrity; visual
 review of layout, text truncation and keyboard use is still required.
 

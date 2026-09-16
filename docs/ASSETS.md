@@ -23,6 +23,16 @@ The images are a deliberate mix of original launcher and game resources. No game
 
 `Heart.png` is a format conversion of the addon's [Heart.tga](https://github.com/krebs3r/hourstone-azeroth-hours/blob/7919c2f505f9d2a723baa5e41ef4c52629ca1234/Hourstone/Media/Heart.tga). Every RGBA pixel is identical to the 32 x 32 source, including the pink color and antialiasing. `Unknown.png` is an original neutral geometric marker used only for an unrecognized class or client. These two images and the existing Hourstone brand artwork remain covered by the project's MIT license.
 
+## Windows application icon
+
+`Hourstone.ico` is generated from the unchanged `Assets/Logo.png` illustration.
+Its canvas omits near-transparent outer export padding so the visible motif is
+approximately 15% larger. It retains the original colors and aspect ratio, with
+independently resampled 16, 20, 24, 32, 40, 48, 64, 128 and 256 pixel PNG frames.
+`app-icon.json` records the source checksum, crop, output checksum and sizes.
+Regenerate with `python tools/build_app_icon.py` using Pillow 12.3.0. Ordinary
+builds use the checked-in ICO and need no image-processing dependency.
+
 ## Rights and attribution
 
 The 13 class icons and four client icons are original Blizzard artwork. Copyright and trademark rights remain with Blizzard Entertainment, Inc. **These Blizzard images are excluded from the repository's MIT license.** The manifest documents provenance and does not grant a separate license to Blizzard artwork. Availability through a CDN, press kit, or installed application is not a blanket redistribution permission; applicable Blizzard terms and [trademark usage guidelines](https://www.blizzard.com/en-us/legal/38fd0408-8431-469a-99bc-2cd9eb9462c8/blizzard-entertainment-trademark-usage-guidelines) continue to apply.

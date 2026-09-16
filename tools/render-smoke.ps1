@@ -33,6 +33,8 @@ function Invoke-RenderCase([string]$Name, [string]$Theme, [double]$Scale, [int]$
         $report.checks -notcontains 'selection-spans-every-column') { throw "Selection verification did not run: $Name" }
     $clientStateIndex = [Array]::IndexOf($ExtraArguments, '--clients-state')
     if ($clientStateIndex -ge 0 -and $report.checks -notcontains ('clients-' + $ExtraArguments[$clientStateIndex + 1] + '-links-visible')) { throw "Client link verification did not run: $Name" }
+    $syncStateIndex = [Array]::IndexOf($ExtraArguments, '--sync-state')
+    if ($syncStateIndex -ge 0 -and $report.checks -notcontains ('sync-' + $ExtraArguments[$syncStateIndex + 1] + '-explanations-accessible')) { throw "Synchronization explanation verification did not run: $Name" }
     Write-Output "PASS render $Name ($($report.checks.Count) layout checks)"
 }
 foreach ($theme in $Themes) {
@@ -74,6 +76,19 @@ if ($Extended) {
         foreach ($state in @('empty', 'missing', 'outdated')) {
             Invoke-RenderCase -Name "clients-$state-$theme" -Theme $theme -Scale 1 -ExtraArguments @('--clients-state', $state)
             Invoke-RenderCase -Name "clients-$state-compact-$theme" -Theme $theme -Scale 1 -Width 960 -Height 600 -ExtraArguments @('--clients-state', $state, '--english')
+        }
+    }
+}
+
+if ($Extended) {
+    foreach ($theme in @('dark', 'light', 'system')) {
+        foreach ($scale in @(1, 1.5, 2)) {
+            Invoke-RenderCase -Name "sync-setup-$theme-$scale" -Theme $theme -Scale $scale -ExtraArguments @('--sync-state', 'disconnected')
+        }
+    }
+    foreach ($theme in @('dark', 'light')) {
+        foreach ($state in @('disconnected', 'connected', 'paused', 'error', 'unchanged')) {
+            Invoke-RenderCase -Name "sync-$state-compact-$theme" -Theme $theme -Scale 1 -Width 960 -Height 600 -ExtraArguments @('--sync-state', $state, '--english')
         }
     }
 }

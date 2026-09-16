@@ -54,6 +54,34 @@ def png_dimensions(data: bytes) -> tuple[int, int]:
     return dimensions
 
 
+def verify_app_icon() -> None:
+    manifest = json.loads((ROOT / "docs/app-icon.json").read_text(encoding="utf-8"))
+    icon = ASSETS / "Hourstone.ico"
+    logo = ASSETS / "Logo.png"
+    if manifest["file"] != icon.relative_to(ROOT).as_posix() or manifest["source"] != logo.relative_to(ROOT).as_posix():
+        raise ValueError("unexpected application icon source")
+    data = icon.read_bytes()
+    if hashlib.sha256(data).hexdigest() != manifest["sha256"] or hashlib.sha256(logo.read_bytes()).hexdigest() != manifest["source_sha256"]:
+        raise ValueError("application icon or source checksum mismatch")
+    expected = [16, 20, 24, 32, 40, 48, 64, 128, 256]
+    if manifest["sizes"] != expected or len(data) < 6 + 16 * len(expected):
+        raise ValueError("application icon resolutions missing")
+    if struct.unpack_from("<HHH", data) != (0, 1, len(expected)):
+        raise ValueError("invalid application ICO header")
+    next_offset = 6 + 16 * len(expected)
+    for index, size in enumerate(expected):
+        width, height, colors, reserved, planes, depth, length, offset = struct.unpack_from("<BBBBHHII", data, 6 + index * 16)
+        if (width or 256, height or 256, colors, reserved, planes, depth) != (size, size, 0, 0, 1, 32):
+            raise ValueError("invalid ICO frame metadata")
+        if offset != next_offset or length < 33 or offset + length > len(data):
+            raise ValueError("invalid ICO frame bounds")
+        if png_dimensions(data[offset:offset + length]) != (size, size):
+            raise ValueError("ICO frame dimensions mismatch")
+        next_offset += length
+    if next_offset != len(data):
+        raise ValueError("unexpected application icon payload")
+
+
 def verify() -> int:
     manifest = json.loads((ROOT / "docs/assets-manifest.json").read_text(encoding="utf-8"))
     if manifest.get("schema_version") != 1:
@@ -91,8 +119,9 @@ def verify() -> int:
         raise ValueError("class resource names do not match the WoW tokens")
     if {path.stem for path in (ASSETS / "Clients").glob("*.png")} != CLIENTS:
         raise ValueError("client resource names do not match protocol families")
+    verify_app_icon()
     return len(entries)
 
 
 if __name__ == "__main__":
-    print(f"Verified {verify()} bundled icons offline (13 classes, 4 clients, heart, unknown).")
+    print(f"Verified {verify()} bundled icons offline (13 classes, 4 clients, heart, unknown), plus the nine-resolution Windows application icon.")

@@ -1,23 +1,24 @@
-# Hourstone Companion 0.1.4
+# Hourstone Companion 0.1.5
 
-The Clients page now provides **Download addon on CurseForge** before any account
-is configured, along with an **Addon on GitHub** source link. Missing and outdated
-addons have an install or update action beside their setup instructions. Links
-open the Windows default browser; browser-start failures produce a localized hint.
+Ordinary action buttons now highlight their background on hover using the active
+sidebar color. Selected time-format controls, primary actions and window buttons
+keep their distinct states. Character selection keeps its full-row cyan underline
+without a dashed frame. The footer reads **GitHub · v0.1.5 · with ♥ by krebs3r**;
+its GitHub link changes text color without an underline or focus box.
 
-The footer contains the companion GitHub link, version and **with ♥ by krebs3r**.
-It stays readable in compact windows while the left-hand hint truncates with a
-full tooltip. Selecting any character cell highlights the whole row with one cyan
-underline. Selection remains visible when moving to an action, and keyboard focus
-has an additional outline in both tracked and removed-character views.
+The Windows icon uses the unchanged Hourstone illustration with less transparent
+padding and nine native resolutions. The illustration in the application is unchanged.
 
-This update keeps protocol 3 and requires Hourstone **0.2.2 or later**. It preserves
-existing settings, measurements and removal/restoration controls. Public release
-requires a compatible addon to be publicly available on CurseForge as well as the
-existing signing and practical validation checks. Local test packages are unsigned.
+Synchronization now explains which folder to choose, when to join it on another
+PC, offline availability and the separate WoW save/load steps. **Sync data** names
+the complete processing cycle; check timestamps no longer imply that playtime or
+an exported file changed. Settings explain stable GitHub app updates, automatic
+download and deferred installation. The WoW addon is updated separately.
 
-Automated checks cover fixed link destinations, browser-launch errors, source
-readiness actions and selection behavior. Synthetic render checks exercise links,
-source states and selected rows with dark/light/system themes, compact windows,
-German/English text and 100%, 150% and 200% scaling. Live WoW and two-device provider
-checks remain part of the broader release validation.
+**Deleted characters** and **Delete from overview** consistently describe the
+reversible overview action. Saved playtime and WoW characters remain intact.
+
+Protocol 3 and compatibility with Hourstone **0.2.2 or later** are unchanged.
+Existing settings, observations and restoration controls are preserved. Public
+installers still require signing and the practical checks in RELEASING.md;
+unsigned packages are for local testing only.

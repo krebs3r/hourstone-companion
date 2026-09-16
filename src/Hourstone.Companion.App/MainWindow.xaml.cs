@@ -31,8 +31,10 @@ public partial class MainWindow : Window
     readonly CancellationTokenSource stopping = new();
     readonly UpdateCoordinator? updater;
     readonly SyncNoticeTracker syncNotifications = new();
+    SyncResult? displayedSyncResult;
     IReadOnlyList<SourceConfiguration>? sourcePreview;
     IReadOnlyList<LocalSourceStatus>? sourceStatusPreview;
+    string? syncPreviewState;
     WindowWorkArea? windowWorkArea;
     UserSettings preferences;
     SettingsDraft? settingsDraft;
@@ -54,7 +56,7 @@ public partial class MainWindow : Window
         SizeChanged += (_, _) =>
         {
             bool compact = ActualHeight < 660;
-            OverviewPage.RowDefinitions[0].Height = new GridLength(compact ? 96 : 112);
+            OverviewPage.RowDefinitions[0].Height = new GridLength(compact ? 108 : 112);
             OverviewPage.RowDefinitions[1].Height = new GridLength(compact ? 120 : 148);
             OverviewPage.RowDefinitions[2].Height = new GridLength(compact ? 44 : 56);
         };
@@ -108,6 +110,14 @@ public partial class MainWindow : Window
         RefreshSettingsState();
         if (tray?.ContextMenuStrip is { } menu) { menu.Items[1].Text = vm.Text("CheckNow"); menu.Items[2].Text = english ? "Quit" : "Beenden"; }
         if (CharacterGrid != null) { CharacterGrid.Columns[0].Header = vm.Text("CharacterHeader"); CharacterGrid.Columns[2].Header = vm.Text("TimeHeader"); CharacterGrid.Columns[3].Header = vm.Text("UpdatedHeader"); }
+        if (AutostartChoice != null) AutostartChoice.ToolTip = english ? "Available after installation." : "Nach Installation verfügbar.";
+        if (UpdateText != null) UpdateText.Text = UpdateCoordinator.LocalizeStatus(UpdateText.Text, english);
+        RefreshSources(); RefreshCloud();
+        if (service != null && syncNotice && displayedSyncResult is { } displayedResult)
+        {
+            DiagnosticsText.Text = SourceStatusPresentation.Diagnostics(displayedResult, service.GetConfiguration().Sources, english);
+            UpdateSyncNotice(displayedResult);
+        }
     }
     void OnSystemPreferenceChanged(object sender, UserPreferenceChangedEventArgs e)
     {
@@ -168,6 +178,7 @@ public partial class MainWindow : Window
     }
     void UpdateSyncNotice(SyncResult result)
     {
+        displayedSyncResult = result;
         var announce = syncNotifications.Update(result.Issues);
         if (result.Success)
         {
@@ -200,9 +211,9 @@ public partial class MainWindow : Window
         try
         {
             var result = await service.SyncNowAsync(stopping.Token);
+            vm.RecordCheck(result.CompletedAt);
             vm.SetObservations(service.GetCharacters(), service.GetRemovedCharacters());
             vm.Status = vm.Text(result.Success ? (result.SourceCount > 0 ? "Active" : "Unconfigured") : "Attention");
-            vm.LastSync = result.AddonReady ? (vm.English ? "Ready for WoW" : "Für WoW bereitgestellt") + " · " + result.CompletedAt.ToLocalTime().ToString("HH:mm") : "";
             DiagnosticsText.Text = SourceStatusPresentation.Diagnostics(result, service.GetConfiguration().Sources, vm.English);
             UpdateSyncNotice(result);
             if (ClientsPage.IsVisible) RefreshSources();
@@ -381,13 +392,17 @@ public partial class MainWindow : Window
     void RefreshCloud()
     {
         if (FolderText == null) return;
+        if (demo && syncPreviewState != null) { RefreshSyncPreview(); return; }
         var config = service?.GetConfiguration(); FolderText.Text = config?.CloudFolder ?? vm.Text("NoneFolder"); PauseButton.Content = vm.Text(config?.CloudPaused == true ? "Resume" : "Pause");
+        PauseButton.IsEnabled = DetachButton.IsEnabled = config?.CloudFolder != null;
         var result = service?.LastResult;
-        PublicationText.Text = config?.CloudFolder == null ? "" :
-            config.CloudPaused ? (vm.English ? "Folder exchange paused. Received data is kept." : "Ordneraustausch pausiert. Empfangene Daten bleiben erhalten.") :
-            result?.CloudPublished == true ? (vm.English ? "Published to sync folder" : "Im Syncordner bereitgestellt") + " · " + result.CompletedAt.ToLocalTime().ToString("HH:mm") :
-            (vm.English ? "Folder publication pending. Last valid data is kept." : "Bereitstellung im Syncordner ausstehend. Der letzte gültige Stand bleibt erhalten.");
-        WoWStatusText.Text = result?.AddonReady == true ? (vm.English ? "Data ready for WoW; loaded on login or /reload." : "Für WoW bereitgestellt; Übernahme beim Login oder /reload.") : (vm.English ? "No new data ready for WoW yet." : "Noch keine neuen Daten für WoW bereitgestellt.");
+        PublicationText.Text = config?.CloudFolder == null ? vm.Text("CloudDisconnected") :
+            config.CloudPaused ? vm.Text("CloudPaused") :
+            result?.CloudPublished == true ? vm.CloudAvailability(result.CompletedAt) :
+            result?.Issues.Any(issue => issue.Code == "cloud_unavailable") == true ? vm.Text("CloudFailed") : vm.Text("CloudPending");
+        WoWStatusText.Text = vm.Text(result?.AddonReady == true ? "WoWOverviewSaved" :
+            config?.Sources.Any(source => source.Enabled) != true ? "WoWOverviewUnconfigured" :
+            result == null || result.CompletedAt == DateTimeOffset.MinValue ? "WoWOverviewUnchecked" : "WoWOverviewPending");
         DevicesPanel.Children.Clear(); var devices = service?.GetDevices();
         if (devices == null || devices.Count == 0) { DevicesPanel.Children.Add(new TextBlock { Text = vm.Text("NoDevices"), TextWrapping = TextWrapping.Wrap }); return; }
         foreach (var device in devices)
@@ -396,6 +411,36 @@ public partial class MainWindow : Window
             panel.Children.Add(new TextBlock { Text = $"{device.CharacterCount} {vm.Text("Characters")} · " + (device.IsLocal ? (vm.English ? "This device" : "Dieses Gerät") : (vm.English ? "Received: " : "Empfangen: ") + device.LastSeen.ToLocalTime().ToString("g", vm.Culture)), Foreground = (Brush)FindResource("Muted"), Margin = new Thickness(0, 8, 0, 0) });
             DevicesPanel.Children.Add(new Border { Style = (Style)FindResource("Card"), Child = panel, Margin = new Thickness(0, 0, 0, 12) });
         }
+    }
+    public void SetSyncPreview(string state)
+    {
+        if (!demo) return;
+        if (state is not ("disconnected" or "connected" or "paused" or "error" or "unchanged")) throw new ArgumentException("Unknown synchronization preview state.", nameof(state));
+        syncPreviewState = state; SetRenderPage("sync"); RefreshCloud();
+    }
+    void RefreshSyncPreview()
+    {
+        var disconnected = syncPreviewState == "disconnected";
+        var completedAt = new DateTimeOffset(DateTime.Today.AddHours(14).AddMinutes(syncPreviewState == "unchanged" ? 33 : 32));
+        FolderText.Text = disconnected ? vm.Text("NoneFolder") : @"C:\Synthetic Dropbox\HourstoneSync";
+        PauseButton.Content = vm.Text(syncPreviewState == "paused" ? "Resume" : "Pause");
+        PauseButton.IsEnabled = DetachButton.IsEnabled = !disconnected;
+        PublicationText.Text = disconnected ? vm.Text("CloudDisconnected") : syncPreviewState switch
+        {
+            "paused" => vm.Text("CloudPaused"),
+            "error" => vm.Text("CloudFailed"),
+            _ => vm.CloudAvailability(completedAt)
+        };
+        WoWStatusText.Text = vm.Text("WoWOverviewSaved");
+        vm.Status = vm.Text(syncPreviewState == "error" ? "Attention" : "Active");
+        vm.RecordCheck(completedAt);
+        DevicesPanel.Children.Clear();
+        if (disconnected) { DevicesPanel.Children.Add(new TextBlock { Text = vm.Text("NoDevices"), TextWrapping = TextWrapping.Wrap }); return; }
+        var panel = new StackPanel();
+        panel.Children.Add(new TextBlock { Text = "Sample laptop", FontSize = 19, FontWeight = FontWeights.SemiBold });
+        var receipt = vm.English ? "Received from this device" : "Von diesem Gerät empfangen";
+        panel.Children.Add(new TextBlock { Text = $"4 {vm.Text("Characters")} · {receipt}: 14:30", Foreground = (Brush)FindResource("Muted"), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 0) });
+        DevicesPanel.Children.Add(new Border { Style = (Style)FindResource("Card"), Child = panel, Margin = new Thickness(0, 0, 0, 12) });
     }
     async void ChooseFolder_Click(object sender, RoutedEventArgs e)
     {
@@ -486,7 +531,7 @@ public partial class MainWindow : Window
     }
     async void CheckUpdate_Click(object sender, RoutedEventArgs e)
     {
-        if (updater == null) { UpdateText.Text = vm.English ? "Updates are available in the installed application." : "Updates stehen in der installierten Anwendung zur Verfügung."; return; }
+        if (updater == null) { UpdateText.Text = UpdateCoordinator.StatusMessage("NotInstalled", vm.English); return; }
         UpdateText.Text = await updater.CheckAsync(true);
     }
     bool? ShowFolderDialog(OpenFolderDialog picker)

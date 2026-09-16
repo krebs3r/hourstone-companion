@@ -10,7 +10,7 @@ using System.Windows.Media;
 namespace Hourstone.Companion.App;
 
 /// <summary>Synthetic render options; never opens a source, provider folder or browser.</summary>
-public sealed record RenderProfile(string? ClientsState, bool Selected, int SelectionColumn, bool SelectionUnfocused)
+public sealed record RenderProfile(string? ClientsState, bool Selected, int SelectionColumn, bool SelectionUnfocused, string? SyncState = null, bool FooterFocused = false)
 {
     public static RenderProfile Parse(string[] arguments)
     {
@@ -24,6 +24,9 @@ public sealed record RenderProfile(string? ClientsState, bool Selected, int Sele
         }
         var state = Value("--clients-state");
         if (state is not (null or "empty" or "missing" or "outdated")) throw new ArgumentException("Unknown clients preview state.");
+        var syncState = Value("--sync-state");
+        if (syncState is not (null or "disconnected" or "connected" or "paused" or "error" or "unchanged"))
+            throw new ArgumentException("Unknown synchronization preview state.");
         var selected = arguments.Contains("--selected") || arguments.Contains("--removed");
         var columnValue = Value("--selection-column");
         var column = 0;
@@ -32,7 +35,9 @@ public sealed record RenderProfile(string? ClientsState, bool Selected, int Sele
         var unfocused = arguments.Contains("--selection-unfocused");
         if (!selected && (columnValue is not null || unfocused)) throw new ArgumentException("Selection options require a selected character preview.");
         if (state is not null && selected) throw new ArgumentException("Client setup and character selection require separate previews.");
-        return new(state, selected, column, unfocused);
+        if (syncState is not null && (state is not null || selected))
+            throw new ArgumentException("Synchronization, client setup and character selection require separate previews.");
+        return new(state, selected, column, unfocused, syncState, arguments.Contains("--footer-focus"));
     }
 }
 
@@ -42,19 +47,23 @@ public static class RenderVerification
     public static void Prepare(MainWindow window, RenderProfile profile)
     {
         if (profile.ClientsState is not null) window.SetClientsPreview(profile.ClientsState);
-        if (!profile.Selected) return;
-        var grid = Named<DataGrid>(window, "CharacterGrid");
-        Require(grid.Items.Count > 0, "Selected preview has no character.");
-        grid.SelectedIndex = 0;
-        grid.CurrentCell = new DataGridCellInfo(grid.Items[0], grid.Columns[profile.SelectionColumn]);
-        grid.ScrollIntoView(grid.Items[0], grid.Columns[profile.SelectionColumn]);
-        grid.UpdateLayout();
-        if (profile.SelectionUnfocused) Named<Button>(window, "CharacterActionButton").Focus();
-        else
+        if (profile.SyncState is not null) window.SetSyncPreview(profile.SyncState);
+        if (profile.Selected)
         {
-            var row = grid.ItemContainerGenerator.ContainerFromIndex(0) as DataGridRow;
-            if (row is not null) Descendants<DataGridCell>(row).FirstOrDefault(cell => cell.Column == grid.Columns[profile.SelectionColumn])?.Focus();
+            var grid = Named<DataGrid>(window, "CharacterGrid");
+            Require(grid.Items.Count > 0, "Selected preview has no character.");
+            grid.SelectedIndex = 0;
+            grid.CurrentCell = new DataGridCellInfo(grid.Items[0], grid.Columns[profile.SelectionColumn]);
+            grid.ScrollIntoView(grid.Items[0], grid.Columns[profile.SelectionColumn]);
+            grid.UpdateLayout();
+            if (profile.SelectionUnfocused) Named<Button>(window, "CharacterActionButton").Focus();
+            else
+            {
+                var row = grid.ItemContainerGenerator.ContainerFromIndex(0) as DataGridRow;
+                if (row is not null) Descendants<DataGridCell>(row).FirstOrDefault(cell => cell.Column == grid.Columns[profile.SelectionColumn])?.Focus();
+            }
         }
+        if (profile.FooterFocused) Named<Button>(window, "FooterGitHubButton").Focus();
     }
 
     public static IReadOnlyList<string> Verify(MainWindow window, RenderProfile profile)
@@ -73,7 +82,22 @@ public static class RenderVerification
             "Footer version or author credit is absent.");
         Require(Descendants<Image>(credits).Any(image => image.IsVisible && image.Source?.ToString().EndsWith("/Heart.png", StringComparison.OrdinalIgnoreCase) == true),
             "Footer heart is absent.");
-        VisibleBounds(window, Named<Button>(window, "FooterGitHubButton"));
+        Require(labels.Count(label => label == "·") == 2 && labels.Contains("with"), "Footer needs a separator before the version and before 'with'.");
+        var footerLink = Named<Button>(window, "FooterGitHubButton");
+        VisibleBounds(window, footerLink);
+        var footerLinkText = footerLink.Template.FindName("FooterLinkText", footerLink) as TextBlock;
+        var footerLinkSurface = footerLink.Template.FindName("FooterLinkSurface", footerLink) as Border;
+        Require(footerLinkText is not null && (footerLinkText.TextDecorations is null || footerLinkText.TextDecorations.Count == 0),
+            "Footer link must not be underlined.");
+        Require(footerLinkSurface is not null && footerLinkSurface.BorderThickness == new Thickness(0) &&
+            footerLinkSurface.Background is SolidColorBrush linkBackground && linkBackground.Color.A == 0,
+            "Footer link must not draw a border or filled background.");
+        if (profile.FooterFocused)
+        {
+            Require(footerLink.IsKeyboardFocused && SameColor(footerLink.Foreground, window.FindResource("Gold") as Brush),
+                "Footer keyboard focus must be visible through its text color.");
+            checks.Add("footer-focus-color-only");
+        }
         checks.Add("footer-visible-and-unclipped");
 
         if (profile.Selected)
@@ -88,6 +112,8 @@ public static class RenderVerification
             Require(cells.All(cell => cell.Background is null || cell.Background is SolidColorBrush brush && brush.Color.A == 0),
                 "A cell paints over the row-wide selection background.");
             Require(cells.All(cell => cell.BorderThickness == new Thickness(0)), "Selection or focus still draws a cell-only border.");
+            Require(!Descendants<System.Windows.Shapes.Shape>(selectedRow).Any(shape => shape.IsVisible && shape.StrokeDashArray is { Count: > 0 }),
+                "A dashed keyboard-focus frame is still visible around the selected character.");
             Require(selectedRow.Background is SolidColorBrush selected && window.FindResource("Selection") is SolidColorBrush expected && selected.Color == expected.Color,
                 "Selected row does not use the theme selection color.");
             var underline = selectedRow.Template.FindName("SelectionUnderline", selectedRow) as FrameworkElement;
@@ -125,6 +151,34 @@ public static class RenderVerification
             }
             checks.Add("clients-" + profile.ClientsState + "-links-visible");
         }
+        if (profile.SyncState is not null)
+        {
+            var page = Named<ScrollViewer>(window, "SyncPage");
+            Require(page.IsVisible, "Synchronization preview is on the wrong page.");
+            foreach (var name in new[] { "SyncStepFirstText", "SyncStepOtherText", "SyncStepAvailabilityText", "SyncAccountHintText", "SyncLocalHintText", "FolderText", "PublicationText", "SyncPauseHintText", "WoWStatusText", "SyncWoWLoadHintText", "SyncCheckHint" })
+            {
+                var label = Named<TextBlock>(window, name);
+                Require(!string.IsNullOrWhiteSpace(label.Text) && label.TextWrapping == TextWrapping.Wrap,
+                    "Synchronization explanation is empty or cannot wrap: " + name);
+                label.BringIntoView();
+                window.ChromeRoot.UpdateLayout();
+                VisibleBounds(window, label);
+            }
+            foreach (var name in new[] { "ChooseFolderButton", "PauseButton", "DetachButton" })
+            {
+                var button = Named<Button>(window, name);
+                button.BringIntoView();
+                window.ChromeRoot.UpdateLayout();
+                VisibleBounds(window, button);
+            }
+            Require(Named<Button>(window, "ChooseFolderButton").IsEnabled, "Selecting a sync folder must remain available.");
+            if (profile.SyncState == "disconnected")
+                Require(!Named<Button>(window, "PauseButton").IsEnabled && !Named<Button>(window, "DetachButton").IsEnabled,
+                    "Pause and disconnect must be unavailable without a sync folder.");
+            page.ScrollToTop();
+            window.ChromeRoot.UpdateLayout();
+            checks.Add("sync-" + profile.SyncState + "-explanations-accessible");
+        }
         return checks;
     }
 
@@ -156,6 +210,9 @@ public static class RenderVerification
             foreach (var descendant in Descendants<T>(child)) yield return descendant;
         }
     }
+
+    private static bool SameColor(Brush? actual, Brush? expected) =>
+        actual is SolidColorBrush first && expected is SolidColorBrush second && first.Color == second.Color;
 
     private static void Require(bool condition, string message)
     { if (!condition) throw new InvalidOperationException("Render verification failed: " + message); }

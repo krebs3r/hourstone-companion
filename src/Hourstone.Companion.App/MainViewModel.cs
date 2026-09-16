@@ -25,16 +25,16 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ["Local"] = ("Lokal gespeichert", "Stored locally"),
         ["Hero"] = ("Deine Zeit in Azeroth", "Your time in Azeroth"),
         ["Subtitle"] = ("Alle Charaktere. Alle Clients. Ein Überblick.", "Every character. Every client. One overview."),
-        ["CheckNow"] = ("Jetzt prüfen", "Check now"),
+        ["CheckNow"] = ("Daten abgleichen", "Sync data"),
         ["SavedTime"] = ("Gespeicherte Spielzeit", "Saved playtime"),
         ["Characters"] = ("Charaktere", "Characters"),
-        ["RemovedCharacters"] = ("Entfernte Charaktere", "Removed characters"),
+        ["RemovedCharacters"] = ("Gelöschte Charaktere", "Deleted characters"),
         ["BackToCharacters"] = ("Zur Charakterliste", "Back to characters"),
-        ["RemoveCharacter"] = ("Aus Übersicht entfernen", "Remove from overview"),
+        ["RemoveCharacter"] = ("Aus der Übersicht löschen", "Delete from overview"),
         ["RestoreCharacter"] = ("Wiederherstellen", "Restore character"),
-        ["RemovedEmpty"] = ("Keine entfernten Charaktere. Deine Spielzeit bleibt bei einer Entfernung gespeichert.", "No removed characters. Removing a character keeps its saved playtime."),
-        ["RemovalHint"] = ("Entfernte Charaktere zählen nicht zur Gesamtzeit. „Wiederherstellen“ oder ein neuer Login nach dem Empfang der Entfernung zeigt sie wieder an. Ein /reload allein genügt dafür nicht.", "Removed characters are excluded from totals. Restore them here, or log in again after the addon receives the removal. A /reload alone does not restore them."),
-        ["RemoveConfirmation"] = ("{0} aus der Übersicht entfernen?\n\nDer Eintrag zählt danach nicht mehr zur Gesamtspielzeit. Der WoW-Charakter und seine gespeicherte Spielzeit bleiben erhalten.\n\nDu kannst ihn unter „Entfernte Charaktere“ wiederherstellen. Ein neuer Login stellt ihn ebenfalls wieder her, sobald die Entfernung im Addon angekommen ist.", "Remove {0} from the overview?\n\nThe entry will no longer count towards total playtime. The WoW character and its saved playtime are kept.\n\nYou can restore it under Removed characters. A new login also restores it once the addon has received the removal."),
+        ["RemovedEmpty"] = ("Keine gelöschten Charaktere. Beim Löschen aus der Übersicht bleibt die gespeicherte Spielzeit erhalten.", "No deleted characters. Deleting an entry from the overview keeps its saved playtime."),
+        ["RemovalHint"] = ("Aus der Übersicht gelöschte Charaktere zählen nicht zur Gesamtzeit. „Wiederherstellen“ oder ein neuer Login nach dem Empfang der Löschung zeigt sie wieder an. Ein /reload allein genügt dafür nicht.", "Characters deleted from the overview are excluded from totals. Restore them here, or log in again after the addon receives the deletion. A /reload alone does not restore them."),
+        ["RemoveConfirmation"] = ("{0} aus der Übersicht löschen?\n\nDer Eintrag zählt danach nicht mehr zur Gesamtspielzeit. Der WoW-Charakter und seine gespeicherte Spielzeit bleiben erhalten.\n\nDu kannst ihn unter „Gelöschte Charaktere“ wiederherstellen. Ein neuer Login stellt ihn ebenfalls wieder her, sobald die Löschung im Addon angekommen ist.", "Delete {0} from the overview?\n\nThe entry will no longer count towards total playtime. The WoW character and its saved playtime are kept.\n\nYou can restore it under Deleted characters. A new login also restores it once the addon has received the deletion."),
         ["VisibilityFailed"] = ("Die Charakterliste konnte nicht geändert werden. Bitte erneut versuchen.", "The character list could not be changed. Please try again."),
         ["Search"] = ("Charakter oder Gilde suchen …", "Search characters or guilds …"),
         ["Hours"] = ("Stunden", "Hours"),
@@ -58,13 +58,13 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ["AccountSources"] = ("Gespeicherte Account-Quellen", "Saved account sources"),
         ["BrowserOpenFailed"] = ("Der Standardbrowser konnte nicht geöffnet werden. Öffne diesen Link in deinem Browser: {0}", "Your default browser could not be opened. Open this link in your browser: {0}"),
         ["FirstSave"] = ("Hourstone 0.2.2 oder neuer muss einmal im jeweiligen Client geladen und durch Ausloggen oder /reload gespeichert werden. Originaldateien bleiben unter der Kontrolle von WoW.", "Load Hourstone 0.2.2 or later in each client, then log out or /reload once. WoW remains in control of its original files."),
-        ["SyncIntro"] = ("Verbinde deine PCs über einen gemeinsamen Dropbox- oder OneDrive-Ordner. Der Companion benötigt dafür kein eigenes Konto.", "Connect your PCs through a shared Dropbox or OneDrive folder. No Companion account is required."),
+        ["SyncIntro"] = ("Hourstone speichert Austauschdateien in einem Ordner auf deinem PC. Dropbox, OneDrive oder ein anderer Synchronisierungsdienst überträgt diesen Ordner auf deine weiteren Geräte. Dort übernimmt der Companion die Daten automatisch.", "Hourstone saves exchange files in a folder on your PC. Dropbox, OneDrive or another sync service transfers this folder to your other devices. The Companion on each device then picks up the data automatically."),
         ["Folder"] = ("Gemeinsamer Syncordner", "Shared sync folder"),
         ["ChooseFolder"] = ("Ordner auswählen", "Choose folder"),
         ["Pause"] = ("Pausieren", "Pause"),
         ["Resume"] = ("Fortsetzen", "Resume"),
         ["Detach"] = ("Verbindung trennen", "Disconnect"),
-        ["OfflineFolder"] = ("Wichtig für den Austausch: Dropbox → „Offline verfügbar machen“ oder OneDrive → „Immer auf diesem Gerät behalten“. Bereitgestellte Dateien sind noch keine Empfangsbestätigung des anderen PCs.", "For file exchange: Dropbox → Make available offline, or OneDrive → Always keep on this device. Publishing a file does not confirm receipt by another PC."),
+        ["OfflineFolder"] = ("Dropbox: „Offline verfügbar machen“. OneDrive: „Immer auf diesem Gerät behalten“. Eine Datei in diesem Ordner bestätigt noch nicht, dass ein anderer PC sie empfangen hat.", "Dropbox: Make available offline. OneDrive: Always keep on this device. A file saved in this folder does not confirm that another PC has received it."),
         ["Devices"] = ("Bekannte Geräte", "Known devices"),
         ["DeviceName"] = ("Gerätename", "Device name"),
         ["Appearance"] = ("Darstellung", "Appearance"),
@@ -83,8 +83,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ["CaptionClose"] = ("Schließen", "Close"),
         ["CaptionCloseTooltip"] = ("Schließen (Alt+F4) · im Infobereich weiterlaufen", "Close (Alt+F4) · keep running in the notification area"),
         ["Updates"] = ("Automatische Updates", "Automatic updates"),
-        ["UpdateInfo"] = ("Prüfung beim Start und täglich. Neue Versionen werden nach Hinweis installiert, sobald WoW geschlossen und dieses Fenster nicht in Benutzung ist.", "Checked at startup and daily. Updates install after a notice, once WoW is closed and this window is idle."),
-        ["CheckUpdate"] = ("Nach Updates suchen", "Check for updates"),
+        ["UpdateInfo"] = ("Hourstone Companion sucht beim Start und danach täglich auf GitHub nach einer neuen veröffentlichten App-Version und lädt sie automatisch herunter. Nach einem Hinweis wird das Update installiert, sobald WoW geschlossen ist und du das App-Fenster nicht mehr verwendest. Ungespeicherte Einstellungen verhindern den Neustart. Anschließend startet die App im Hintergrund neu.", "Hourstone Companion checks GitHub at startup and daily for a newly published app version and downloads it automatically. After a notice, the update installs once WoW is closed and you are no longer using the app window. Unsaved settings prevent the restart. The app then restarts in the background."),
+        ["CheckUpdate"] = ("Nach App-Updates suchen", "Check for app updates"),
         ["Diagnostics"] = ("Lokale Diagnose", "Local diagnostics"),
         ["Footer"] = ("Neue Spielzeit wird nach dem Ausloggen oder einem /reload übernommen.", "New playtime is picked up after logout or /reload."),
         ["AllClients"] = ("Alle Clients", "All clients"),
@@ -96,11 +96,34 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ["Attention"] = ("Abgleich benötigt Aufmerksamkeit", "Sync needs attention"),
         ["NoneFolder"] = ("Kein Syncordner verbunden. Der lokale Abgleich bleibt aktiv.", "No sync folder connected. Local sync remains active."),
         ["NoSources"] = ("Noch keine gespeicherten Hourstone-Daten gefunden.", "No saved Hourstone data found yet."),
-        ["NoDevices"] = ("Weitere Geräte erscheinen nach ihrem ersten gespeicherten Snapshot.", "Other devices appear after their first saved snapshot."),
+        ["NoDevices"] = ("Weitere Geräte erscheinen, sobald ihre Austauschdatei hier empfangen wurde.", "Other devices appear after their exchange file has been received here."),
         ["CharacterHeader"] = ("Charakter", "Character"),
         ["TimeHeader"] = ("Spielzeit", "Playtime"),
         ["UpdatedHeader"] = ("Aktualisiert", "Updated"),
         ["Now"] = ("gerade eben", "just now"),
+        ["LastCheck"] = ("Letzter Abgleich", "Last sync check"),
+        ["CheckTooltip"] = ("Liest gespeicherte Hourstone-Daten aller ausgewählten Accounts ein, gleicht verfügbare Daten anderer PCs ab und aktualisiert die gemeinsame Übersicht sowie die Daten für das WoW-Addon.", "Reads saved Hourstone data from every selected account, exchanges available data from other PCs, and updates the shared overview and the data for the WoW addon."),
+        ["CheckSaveHint"] = ("WoW muss neue Spielzeit zuerst durch Ausloggen oder /reload speichern. „Daten abgleichen“ erzwingt weder diesen Speichervorgang noch die Übertragung durch Dropbox oder OneDrive.", "WoW must save new playtime first through logout or /reload. Sync data does not force WoW to save or Dropbox or OneDrive to transfer files."),
+        ["SyncStepFirst"] = ("Erster PC: Wähle einen Ordner, der bereits durch deinen Dienst synchronisiert wird. Der Companion erstellt darin den Unterordner HourstoneSync.", "First PC: Choose a folder that your service already synchronizes. The Companion creates the HourstoneSync subfolder inside it."),
+        ["SyncStepOther"] = ("Weitere PCs: Warte, bis HourstoneSync vollständig angekommen ist. Wähle dann denselben synchronisierten Ordner oder direkt den Unterordner HourstoneSync aus.", "Other PCs: Wait until HourstoneSync has fully arrived. Then choose the same synchronized folder or the HourstoneSync subfolder itself."),
+        ["SyncStepAvailability"] = ("Alle Geräte: Halte den Ordner dauerhaft lokal verfügbar. Companion und Synchronisierungsdienst müssen für den Austausch laufen.", "All devices: Keep the folder permanently available locally. The Companion and the sync service must be running to exchange data."),
+        ["SyncAccountHint"] = ("Du meldest dich bei deinem Synchronisierungsdienst an. Ein eigenes Companion-Konto wird nicht benötigt.", "Sign in through your sync service. No separate Companion account is required."),
+        ["SyncLocalHint"] = ("Auch ohne gemeinsamen Ordner gleicht der Companion die ausgewählten WoW-Accounts auf diesem PC ab.", "Without a shared folder, the Companion still syncs the selected WoW accounts on this PC."),
+        ["SyncPauseHint"] = ("Pausieren unterbricht nur den Austausch mit anderen PCs. Bereits empfangene Daten bleiben erhalten. Beim Trennen werden fremde Beiträge lokal ausgeblendet; Dateien anderer PCs bleiben unangetastet.", "Pausing stops only the exchange with other PCs and keeps received data. Disconnecting hides other PCs’ contributions locally without changing their files."),
+        ["SyncFolderLabel"] = ("Verwendeter Ordner", "Folder in use"),
+        ["SyncWoWTitle"] = ("Anzeige im WoW-Addon", "Display in the WoW addon"),
+        ["SyncWoWLoadHint"] = ("WoW übernimmt diesen Stand beim nächsten Login oder /reload. Nach der ersten Einrichtung WoW einmal vollständig schließen und neu starten.", "WoW loads this data on your next login or /reload. After the first setup, fully close and restart WoW once."),
+        ["WoWOverviewSaved"] = ("Gemeinsame Übersicht für das WoW-Addon gespeichert", "Shared overview saved for the WoW addon"),
+        ["WoWOverviewPending"] = ("Die gemeinsame Übersicht konnte noch nicht für alle ausgewählten Clients gespeichert werden. Unter „Clients“ findest du die nächsten Schritte; Fehlerdetails stehen in der lokalen Diagnose.", "The shared overview could not yet be saved for every selected client. Open Clients for the next steps; error details are in local diagnostics."),
+        ["WoWOverviewUnconfigured"] = ("Wähle unter „Clients“ die WoW-Accounts aus, deren Daten du gemeinsam anzeigen möchtest.", "Open Clients and select the WoW accounts whose data you want to view together."),
+        ["WoWOverviewUnchecked"] = ("Die gemeinsame Übersicht wird beim nächsten Datenabgleich für das WoW-Addon gespeichert.", "The shared overview will be saved for the WoW addon during the next sync check."),
+        ["CloudPaused"] = ("Ordneraustausch pausiert. Empfangene Daten bleiben erhalten.", "Folder exchange paused. Received data is kept."),
+        ["CloudDisconnected"] = ("Der Austausch mit anderen PCs ist noch nicht eingerichtet.", "Exchange with other PCs has not been set up yet."),
+        ["CloudPublished"] = ("Daten im Syncordner verfügbar", "Data available in sync folder"),
+        ["CheckedAt"] = ("Geprüft um {0}", "Checked at {0}"),
+        ["CloudPending"] = ("Speichern im Syncordner ausstehend. Der letzte gültige Stand bleibt erhalten.", "Saving to the sync folder is pending. The last valid data is kept."),
+        ["CloudFailed"] = ("Der Syncordner ist momentan nicht erreichbar. Der lokale Abgleich läuft weiter; zuletzt empfangene Daten bleiben erhalten.", "The sync folder is currently unavailable. Local sync continues and previously received data is kept."),
+        ["AddonUpdateHint"] = ("Das WoW-Addon aktualisierst du separat über CurseForge.", "Update the WoW addon separately through CurseForge."),
         ["ThisPC"] = ("Dieser PC", "This PC"),
     };
     public Dictionary<string, string> T => Strings.ToDictionary(x => x.Key, x => English ? x.Value.En : x.Value.De);
@@ -145,9 +168,14 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public int CharacterCount => observations.Count;
     public int ClientCount => observations.Select(x => x.Flavor).Distinct().Count();
     public string RowSummary => showRemoved ? $"{Rows.Count} {Text("RemovedCharacters")}" : $"{Rows.Count} {Text("Characters")} · {Rows.Select(x => x.Client).Distinct().Count()} Clients";
-    string status = "", lastSync = "";
+    string status = "";
+    DateTimeOffset? lastCompletedCheck;
     public string Status { get => status; set { status = value; Changed(); } }
-    public string LastSync { get => lastSync; set { lastSync = value; Changed(); } }
+    public string LastSync => lastCompletedCheck is { } completed ? Text("LastCheck") + " · " + completed.ToLocalTime().ToString("HH:mm", Culture) : "";
+    public string CloudAvailability(DateTimeOffset completedAt) => Text("CloudPublished") + " · " + string.Format(Culture, Text("CheckedAt"), completedAt.ToLocalTime().ToString("HH:mm", Culture));
+    public void RecordCheck(DateTimeOffset completedAt) { lastCompletedCheck = completedAt; Changed(nameof(LastSync)); }
+    public bool IsHours => hours;
+    public bool IsDays => !hours;
     public string HoursBackground => hours ? "#34C9F3" : "Transparent";
     public string HoursForeground => hours ? "#071B28" : EnglishColor;
     public string DaysBackground => !hours ? "#34C9F3" : "Transparent";
@@ -156,18 +184,18 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public MainViewModel(bool demo)
     {
         Demo = demo; SetObservations(demo ? DemoData() : []);
-        Status = Text(demo ? "Active" : "Unconfigured"); LastSync = demo ? Text("Ready") + " · 14:32" : "";
+        Status = Text(demo ? "Active" : "Unconfigured");
+        if (demo) RecordCheck(new DateTimeOffset(DateTime.Today.AddHours(14).AddMinutes(32)));
     }
     public void SetLanguage(bool english)
     {
         var statusKey = Strings.FirstOrDefault(x => (English ? x.Value.En : x.Value.De) == Status).Key;
-        var ready = Text("Ready");
         English = english; Changed(nameof(T));
         if (statusKey != null) Status = Text(statusKey);
-        LastSync = LastSync.Replace(ready, Text("Ready"), StringComparison.Ordinal);
+        Changed(nameof(LastSync));
         SetObservations(observations.ToArray(), removedObservations.ToArray()); Changed(nameof(BuildLabel)); Changed(nameof(PreviewLabel));
     }
-    public void SetHours(bool value) { hours = value; RefreshRows(); Changed(nameof(HoursBackground)); Changed(nameof(HoursForeground)); Changed(nameof(DaysBackground)); Changed(nameof(DaysForeground)); }
+    public void SetHours(bool value) { hours = value; RefreshRows(); Changed(nameof(IsHours)); Changed(nameof(IsDays)); Changed(nameof(HoursBackground)); Changed(nameof(HoursForeground)); Changed(nameof(DaysBackground)); Changed(nameof(DaysForeground)); }
     public void NotifyDevice() => Changed(nameof(DeviceName));
     public void SetObservations(IEnumerable<Observation> values, IEnumerable<Observation>? removedValues = null)
     {

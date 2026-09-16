@@ -15,7 +15,7 @@ public sealed class CharacterVisibilityViewTests
         Assert.Contains("(2)", model.ToggleRemovedLabel);
         model.ShowRemoved = true;
         Assert.Equal(2, model.Rows.Count); Assert.Equal(time, model.TotalTime);
-        Assert.Equal("Entfernte Charaktere", model.ListTitle);
+        Assert.Equal("Gelöschte Charaktere", model.ListTitle);
         Assert.Equal("Wiederherstellen", model.CharacterActionLabel);
         model.Search = all[0].Name; Assert.Equal(all[0].Guid, Assert.Single(model.Rows).Value.Guid);
         model.SelectedRow = model.Rows[0]; Assert.True(model.CanChangeCharacter);
@@ -23,7 +23,7 @@ public sealed class CharacterVisibilityViewTests
         model.IsIdle = true; Assert.True(model.CanChangeCharacter);
         model.SetLanguage(true);
         Assert.True(model.ShowRemoved); Assert.Single(model.Rows);
-        Assert.Equal("Removed characters", model.ListTitle); Assert.Equal("Restore character", model.CharacterActionLabel);
+        Assert.Equal("Deleted characters", model.ListTitle); Assert.Equal("Restore character", model.CharacterActionLabel);
         Assert.Equal(all[0].Guid, model.SelectedRow!.Value.Guid);
         model.SetHours(false); model.SetLight(true);
         Assert.Equal(2, model.RemovedObservations.Count); Assert.Equal(6, model.CharacterCount);

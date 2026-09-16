@@ -35,14 +35,48 @@
             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
           </Border>
           <ControlTemplate.Triggers>
-            <Trigger Property="IsMouseOver" Value="True">
+            <MultiTrigger>
+              <MultiTrigger.Conditions>
+                <Condition Property="IsMouseOver" Value="True" />
+                <Condition Property="IsEnabled" Value="True" />
+              </MultiTrigger.Conditions>
+              <Setter TargetName="Chrome" Property="Background" Value="{DynamicResource Selection}" />
               <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource Cyan}" />
-            </Trigger>
+            </MultiTrigger>
             <Trigger Property="IsKeyboardFocused" Value="True">
               <Setter TargetName="Chrome" Property="BorderBrush" Value="{DynamicResource Cyan}" />
             </Trigger>
             <Trigger Property="IsEnabled" Value="False">
               <Setter TargetName="Chrome" Property="Opacity" Value=".45" />
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <Style x:Key="TimeFormatButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Padding" Value="5" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Border x:Name="Segment" Background="{TemplateBinding Background}" BorderBrush="Transparent" BorderThickness="1" CornerRadius="4" Padding="{TemplateBinding Padding}">
+            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+          </Border>
+          <ControlTemplate.Triggers>
+            <MultiDataTrigger>
+              <MultiDataTrigger.Conditions>
+                <Condition Binding="{Binding IsMouseOver,RelativeSource={RelativeSource Self}}" Value="True" />
+                <Condition Binding="{Binding IsEnabled,RelativeSource={RelativeSource Self}}" Value="True" />
+                <Condition Binding="{Binding Tag,RelativeSource={RelativeSource Self}}" Value="False" />
+              </MultiDataTrigger.Conditions>
+              <Setter TargetName="Segment" Property="Background" Value="{DynamicResource Selection}" />
+            </MultiDataTrigger>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="Segment" Property="BorderBrush" Value="{DynamicResource Gold}" />
+            </Trigger>
+            <Trigger Property="IsEnabled" Value="False">
+              <Setter TargetName="Segment" Property="Opacity" Value=".45" />
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
@@ -350,16 +384,12 @@
         <ControlTemplate TargetType="DataGridRow">
           <Grid Background="{TemplateBinding Background}" SnapsToDevicePixels="True">
             <DataGridCellsPresenter ItemsPanel="{TemplateBinding ItemsPanel}" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
-            <Rectangle x:Name="RowKeyboardFocus" Margin="2,2,2,3" Stroke="{DynamicResource Cyan}" StrokeThickness="1" StrokeDashArray="2,2" IsHitTestVisible="False" Visibility="Collapsed" />
             <Border x:Name="SelectionUnderline" Background="{DynamicResource Cyan}" Height="2" VerticalAlignment="Bottom" IsHitTestVisible="False" Visibility="Collapsed" />
           </Grid>
           <ControlTemplate.Triggers>
             <Trigger Property="IsSelected" Value="True">
               <Setter Property="Background" Value="{DynamicResource Selection}" />
               <Setter TargetName="SelectionUnderline" Property="Visibility" Value="Visible" />
-            </Trigger>
-            <Trigger Property="IsKeyboardFocusWithin" Value="True">
-              <Setter TargetName="RowKeyboardFocus" Property="Visibility" Value="Visible" />
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>

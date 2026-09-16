@@ -39,6 +39,11 @@ be provisioned separately; the repository does not contain one.
 ## Practical checks before a public tag
 
 - Check the main screen, resizing, long names, keyboard focus and tray behavior.
+- Check enabled/disabled button hover, active time-format selection and text-only
+  footer link feedback in dark, light and system appearances.
+- Compare the application icon in the taskbar for installed and portable copies.
+- Check the folder setup guide and local/folder/WoW statuses with no folder, paused
+  exchange, unchanged data and read/write errors.
 - Check initial installation, uninstallation, autostart and restart after update.
 - On two Windows devices, exercise Dropbox and OneDrive with locally resident folders.
 - Check offline play, reconnection, delayed and conflicting files, pause and disconnect.
@@ -51,7 +56,7 @@ be provisioned separately; the repository does not contain one.
 - Confirm reloads, zone changes, old files and a running session do not restore it.
 - Test simultaneous offline removals/restorations and copied local data, plus
   source deselection and switching to a different group without unrelated controls.
-- Upgrade an existing 0.1.3 installation, preserving settings and measurements.
+- Upgrade an existing 0.1.4 installation, preserving settings and measurements.
 - Verify CurseForge and both GitHub links open the correct default-browser pages.
 - Check mouse and keyboard selection in both character lists, including sorting
   and moving focus to an action without losing the full-row underline.

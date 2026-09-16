@@ -13,7 +13,7 @@ Live WoW clients and two-device provider synchronization require practical valid
 ## What it does
 
 - Character overview with guilds, total playtime, character/guild search, client and realm filters.
-- Reversible removal from the overview, synchronized across your own PCs.
+- Reversible deletion from the overview, synchronized across your own PCs.
 - Local, read-only ingestion of selected Hourstone account data.
 - Optional device synchronization using one snapshot per computer and no companion server.
 - A generated data addon makes the combined overview available in WoW.
@@ -31,8 +31,8 @@ TBC Anniversary and Classic Era. The WoW addon also works independently.
 2. Choose **Find installations** and select your WoW installations and account sources.
 3. Restart WoW once after the companion first creates the `Hourstone_Sync` addon.
    Later updates become available on login or reload.
-4. For multiple computers, select the same provider folder on each computer and
-   keep it available offline in Dropbox or OneDrive.
+4. For multiple computers, follow **Synchronization** below to connect a locally
+   available Dropbox, OneDrive or other synchronized folder.
 
 The download button opens the official CurseForge page in your default browser;
 installation is handled there. It is available before you configure any sources,
@@ -52,18 +52,18 @@ the character is offline. Guild changes synchronize independently of playtime.
 Update the companion to 0.1.3 or later on every PC before exchanging protocol 3
 snapshots. Earlier snapshots and existing settings and databases remain readable.
 
-Select a character and choose **Remove from overview** to exclude it from the
+Select a character and choose **Delete from overview** to exclude it from the
 list and its total, after confirmation. The WoW character and saved playtime are
-kept. **Removed characters** opens the list with **Restore character**.
+kept. **Deleted characters** opens the list with **Restore character**.
 
-![Removed characters with sample data](docs/assets/removed-characters.png)
+![Deleted characters with sample data](docs/assets/removed-characters.png)
 
 A fresh WoW login also restores the character, once the removal has reached that
 addon. A `/reload`, app restart or old file from an offline laptop does not restore
 it. Removing the character you are currently playing keeps it hidden until the
 next login; time measurement continues. Both apps exchange these decisions
 alongside saved measurements. Characters deleted inside WoW remain in Hourstone
-until you remove their entries; renaming a character with the same GUID preserves
+until you delete their entries from the overview; renaming a character with the same GUID preserves
 its entry and time.
 
 In **Settings**, changing the device name, appearance, language or autostart enables
@@ -85,6 +85,58 @@ contents. It keeps its SQLite database, settings and device identity locally.
 Only selected character observations and the matching removal/restoration controls
 enter the provider folder. Learned controls stay locally after disconnecting;
 unrelated old-group identities are not published into a new group.
+
+## Synchronization
+
+![Synchronization setup with sample data](docs/assets/synchronization.png)
+
+Hourstone writes exchange files to a local folder. Dropbox, OneDrive or another
+file synchronization service transfers that folder to your other computers; their
+Companion apps then import the files automatically. Sign in to your chosen service,
+not to Hourstone. No Companion account or hosted Hourstone server is needed.
+
+1. On the first PC, choose a folder already synchronized by your service.
+   Hourstone creates an **HourstoneSync** subfolder there.
+2. On another PC, wait until that subfolder and its contents have arrived, then
+   select the same synchronized folder or **HourstoneSync** itself. This joins
+   the existing group instead of creating a separate one in an empty folder.
+3. Keep **HourstoneSync** available offline on every PC, and keep both Companion
+   and the synchronization service running for exchange. Use Dropbox's offline
+   availability option or OneDrive's **Always keep on this device** option.
+
+**Sync data** reads the last saved Hourstone files of all selected accounts,
+imports available data from other PCs, updates the overview and writes the combined
+data for the WoW addon. The same cycle runs at startup, after file changes and every
+30 seconds. The button does not make WoW save and does not force a cloud transfer.
+Save new playtime by logging out or using `/reload` in WoW first.
+
+**Last sync check** is the time of the completed check, not the last playtime change.
+Files in the sync folder do not confirm that another PC has received them.
+WoW loads the prepared overview at its next login or `/reload`; after the first
+creation of **Hourstone_Sync**, restart WoW completely once. The reload that caused
+WoW to save may finish before the Companion has prepared the new overview.
+
+Without a shared folder, local processing still works. **Pause** stops folder
+exchange while keeping local processing and received data. The current folder
+path and separate folder/WoW status messages are shown on **Synchronization**.
+
+## Application updates
+
+Companion checks the public stable releases of this repository at startup and
+every 24 hours while running. No GitHub login is required; prereleases are excluded.
+**Check for app updates** performs the same check immediately and downloads an
+available update. Releases must contain the Velopack feed and update packages;
+a source commit, tag or standalone installer is not an update feed.
+
+After download, the app announces the update. It waits until WoW is closed, the
+window is inactive, at least 90 seconds have passed without input and at least
+30 seconds have passed since the notice. Open dialogs, synchronization, saving and
+unsaved settings prevent installation. The app restarts in the background, retaining
+its settings and data. Update errors leave local processing available.
+
+Installed copies and fully extracted Velopack portable packages support updates.
+Unpackaged development builds do not. **The WoW addon is updated separately through
+CurseForge.**
 
 ## Build and test
 

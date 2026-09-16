@@ -1,6 +1,8 @@
 using System;
 using System.ComponentModel;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading.Tasks;
 using Velopack;
 using Velopack.Sources;
@@ -8,6 +10,20 @@ namespace Hourstone.Companion.App;
 
 public sealed class UpdateCoordinator
 {
+    static readonly Dictionary<string, (string De, string En)> Messages = new()
+    {
+        ["Busy"] = ("Eine App-Updateprüfung läuft bereits.", "An app update check is already running."),
+        ["NotInstalled"] = ("App-Updates stehen nach Installation zur Verfügung.", "Install the application to enable app updates."),
+        ["NoNewerVersion"] = ("Keine neuere App-Version verfügbar.", "No newer app version is available."),
+        ["Ready"] = ("App-Update heruntergeladen. Die Installation wartet auf ein geschlossenes WoW und ein unbenutztes App-Fenster.", "App update downloaded. Installation is waiting for WoW to close and the app window to be idle."),
+        ["Unavailable"] = ("App-Updateprüfung momentan nicht verfügbar. Der lokale Abgleich läuft weiter.", "App update check unavailable. Local sync continues.")
+    };
+    public static string StatusMessage(string key, bool english) => english ? Messages[key].En : Messages[key].De;
+    public static string LocalizeStatus(string message, bool english)
+    {
+        var key = Messages.FirstOrDefault(entry => entry.Value.De == message || entry.Value.En == message).Key;
+        return key == null ? message : StatusMessage(key, english);
+    }
     readonly UpdateManager manager = new(new GithubSource("https://github.com/krebs3r/hourstone-companion", null, false));
     readonly MainWindow window; readonly Action<string> notify;
     DateTimeOffset lastCheck = DateTimeOffset.MinValue, noticeAt = DateTimeOffset.MaxValue;
@@ -32,20 +48,20 @@ public sealed class UpdateCoordinator
     }
     public async Task<string> CheckAsync(bool manual)
     {
-        if (busy) return T("Eine Prüfung läuft bereits.", "A check is already running.");
-        if (!IsInstalled) return T("Updates stehen nach Installation zur Verfügung.", "Install the application to enable updates.");
+        if (busy) return StatusMessage("Busy", window.English);
+        if (!IsInstalled) return StatusMessage("NotInstalled", window.English);
         busy = true; lastCheck = DateTimeOffset.UtcNow;
         try
         {
             var update = await manager.CheckForUpdatesAsync();
-            if (update == null) return T("Du verwendest die aktuelle Version.", "You are up to date.");
+            if (update == null) return StatusMessage("NoNewerVersion", window.English);
             await manager.DownloadUpdatesAsync(update);
             pending = update.TargetFullRelease; announced = false; Announce();
-            return T("Update bereit.", "Update ready.");
+            return StatusMessage("Ready", window.English);
         }
         catch (Exception)
         {
-            var message = T("Updateprüfung momentan nicht verfügbar. Der lokale Abgleich läuft weiter.", "Update check unavailable. Local sync continues.");
+            var message = StatusMessage("Unavailable", window.English);
             if (manual) notify(message); return message;
         }
         finally { busy = false; }
