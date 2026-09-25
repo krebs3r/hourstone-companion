@@ -51,7 +51,7 @@ public sealed class VisibilityIntegrationTests : IDisposable
         Assert.Empty(a.GetCharacters()); Assert.Single(a.GetRemovedCharacters());
         Assert.True((await a.SyncNowAsync()).Success); Assert.True((await b.SyncNowAsync()).Success);
         Assert.Empty(b.GetCharacters()); Assert.Single(b.GetRemovedCharacters());
-        Assert.Equal(3, Published(b).FormatVersion); Assert.Single(Published(b).Visibility!);
+        Assert.Equal(4, Published(b).FormatVersion); Assert.Single(Published(b).Visibility!);
         Assert.Equal(sourceA.SourceId, Assert.Single(Published(a).Observations).SourceId);
         Assert.Equal(sourceB.SourceId, Assert.Single(Published(b).Observations).SourceId);
         var generated = File.ReadAllText(Path.Combine(sourceB.DataAddonDirectory, "Data.lua"));

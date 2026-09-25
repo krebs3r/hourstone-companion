@@ -126,6 +126,7 @@ try {
     $portableArchive = Join-Path $releaseRoot 'HourstoneCompanion-win-Portable.zip'
     [IO.Compression.ZipFile]::ExtractToDirectory($portableArchive, $portableRoot)
     & (Join-Path $PSScriptRoot 'render-smoke.ps1') -Executable (Join-Path $portableRoot 'current/Hourstone.Companion.exe') -OutputDirectory (Join-Path $artifactRoot 'portable-renders') -Scales 1 -Themes 'dark'
+    & (Join-Path $PSScriptRoot 'startup-smoke.ps1') -Executable (Join-Path $portableRoot 'Hourstone Companion.exe') -DataDirectory (Join-Path $portableRoot 'startup-test-profile') -ExpectedDistribution VelopackPortable
     . (Join-Path $PSScriptRoot 'release-assets.ps1')
     Write-PublicReleaseManifest -ReleaseDirectory $releaseRoot -Version $Version -Signed (-not $Unsigned)
     Write-Output "PASS package $Version (signed: $(-not $Unsigned)); assets in artifacts/releases"

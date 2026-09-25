@@ -21,15 +21,15 @@ namespace Hourstone.Companion.App;
 public partial class MainWindow : Window
 {
     readonly MainViewModel vm;
-    readonly CompanionService? service;
+    CompanionService? service;
     readonly bool demo, render;
     readonly DispatcherTimer timer = new() { Interval = TimeSpan.FromSeconds(1) };
     readonly List<FileSystemWatcher> watchers = [];
-    readonly Forms.NotifyIcon? tray;
-    readonly EventWaitHandle? showSignal;
-    readonly RegisteredWaitHandle? showWait;
+    Forms.NotifyIcon? tray;
+    EventWaitHandle? showSignal;
+    RegisteredWaitHandle? showWait;
     readonly CancellationTokenSource stopping = new();
-    readonly UpdateCoordinator? updater;
+    UpdateCoordinator? updater;
     readonly SyncNoticeTracker syncNotifications = new();
     SyncResult? displayedSyncResult;
     IReadOnlyList<SourceConfiguration>? sourcePreview;
@@ -39,6 +39,7 @@ public partial class MainWindow : Window
     UserSettings preferences;
     SettingsDraft? settingsDraft;
     bool savingSettings;
+    bool loadingStoreSettings;
     DateTimeOffset lastScan = DateTimeOffset.MinValue, changed = DateTimeOffset.MaxValue;
     bool quit, quitPending, busy, modalOpen, syncNotice;
     public DateTimeOffset LastInteraction { get; private set; } = DateTimeOffset.UtcNow;
@@ -56,9 +57,12 @@ public partial class MainWindow : Window
         SizeChanged += (_, _) =>
         {
             bool compact = ActualHeight < 660;
-            OverviewPage.RowDefinitions[0].Height = new GridLength(compact ? 108 : 112);
-            OverviewPage.RowDefinitions[1].Height = new GridLength(compact ? 120 : 148);
-            OverviewPage.RowDefinitions[2].Height = new GridLength(compact ? 44 : 56);
+            OverviewPage.RowDefinitions[0].Height = new GridLength(compact ? 98 : 112);
+            OverviewPage.RowDefinitions[1].Height = new GridLength(compact ? 40 : 52);
+            OverviewHero.FontSize = ActualWidth < 1150 ? 30 : 48;
+            OverviewSubtitleText.FontSize = ActualWidth < 1150 ? 16 : 23;
+            PlaytimePage.RowDefinitions[1].Height = new GridLength(compact ? 80 : 132);
+            PlaytimePage.RowDefinitions[2].Height = new GridLength(compact ? 40 : 48);
         };
         SetLanguage(preferences.Language == "en"); ApplyTheme(preferences.Theme);
         DeviceNameInput.Text = vm.DeviceName; ThemeChoice.SelectedIndex = preferences.Theme == "light" ? 1 : preferences.Theme == "system" ? 2 : 0;
@@ -67,6 +71,15 @@ public partial class MainWindow : Window
         PreviewMouseDown += (_, _) => LastInteraction = DateTimeOffset.UtcNow;
         PreviewKeyDown += (_, _) => LastInteraction = DateTimeOffset.UtcNow;
         if (demo) { vm.DeviceName = vm.Text("ThisPC"); vm.NotifyDevice(); DeviceNameInput.Text = vm.DeviceName; InitializeSettingsDraft(); return; }
+        if (AppDistribution.Current.IsStore && (StoreImportService.RequiresSetup || !AppRuntime.OwnsInstance))
+        {
+            InitializeStoreSetup(); return;
+        }
+        StartNormalRuntime();
+    }
+    void StartNormalRuntime()
+    {
+        if (service is not null) return;
         Directory.CreateDirectory(UserSettings.DataDirectory);
         service = new(Path.Combine(UserSettings.DataDirectory, "companion.sqlite"));
         vm.DeviceName = service.GetConfiguration().DeviceName; vm.NotifyDevice(); DeviceNameInput.Text = vm.DeviceName;
@@ -77,23 +90,27 @@ public partial class MainWindow : Window
         menu.Items.Add("Hourstone Companion", null, (_, _) => Dispatcher.Invoke(ShowMain));
         menu.Items.Add(vm.Text("CheckNow"), null, (_, _) => Dispatcher.InvokeAsync(async () => await ScanAsync()));
         menu.Items.Add(vm.English ? "Quit" : "Beenden", null, (_, _) => Dispatcher.Invoke(Quit)); tray.ContextMenuStrip = menu; tray.DoubleClick += (_, _) => Dispatcher.Invoke(ShowMain);
-        showSignal = new(false, EventResetMode.AutoReset, "Local\\HourstoneCompanion.Show");
-        showWait = ThreadPool.RegisterWaitForSingleObject(showSignal, (_, _) => Dispatcher.InvokeAsync(ShowMain), null, Timeout.Infinite, false);
-        updater = new(this, Notify);
-        AutostartChoice.IsEnabled = updater.SupportsAutostart;
+        if (!AppRuntime.IsSmokeTest)
+        {
+            showSignal = new(false, EventResetMode.AutoReset, "Local\\HourstoneCompanion.Show");
+            showWait = ThreadPool.RegisterWaitForSingleObject(showSignal, (_, _) => Dispatcher.InvokeAsync(ShowMain), null, Timeout.Infinite, false);
+        }
+        updater = AppDistribution.Current.IsStore || AppRuntime.IsSmokeTest ? null : new(this, Notify);
+        AutostartChoice.IsEnabled = updater?.SupportsAutostart == true;
         AutostartChoice.ToolTip = vm.English ? "Available after installation." : "Nach Installation verfügbar.";
-        if (updater.SupportsAutostart) ApplyAutostart(preferences.Autostart);
+        if (updater?.SupportsAutostart == true) ApplyAutostart(preferences.Autostart);
         InitializeSettingsDraft();
         RefreshSources(); RefreshCloud(); RebuildWatchers();
         timer.Tick += async (_, _) =>
         {
-            if (busy) return;
+            if (busy || savingSettings) return;
             if (DateTimeOffset.UtcNow - lastScan >= TimeSpan.FromSeconds(30) || DateTimeOffset.UtcNow - changed >= TimeSpan.FromMilliseconds(750))
                 await ScanAsync();
             if (updater != null) await updater.TickAsync();
         };
         SystemEvents.UserPreferenceChanged += OnSystemPreferenceChanged;
-        timer.Start(); Dispatcher.InvokeAsync(async () => await ScanAsync());
+        timer.Start(); if (!AppRuntime.IsSmokeTest) Dispatcher.InvokeAsync(async () => await ScanAsync());
+        Dispatcher.InvokeAsync(RefreshDistributionSettingsAsync);
     }
     protected override void OnSourceInitialized(EventArgs e)
     {
@@ -113,6 +130,7 @@ public partial class MainWindow : Window
         if (AutostartChoice != null) AutostartChoice.ToolTip = english ? "Available after installation." : "Nach Installation verfügbar.";
         if (UpdateText != null) UpdateText.Text = UpdateCoordinator.LocalizeStatus(UpdateText.Text, english);
         RefreshSources(); RefreshCloud();
+        RefreshDistributionLabels();
         if (service != null && syncNotice && displayedSyncResult is { } displayedResult)
         {
             DiagnosticsText.Text = SourceStatusPresentation.Diagnostics(displayedResult, service.GetConfiguration().Sources, english);
@@ -147,7 +165,7 @@ public partial class MainWindow : Window
         SyncPage.Visibility = page == "Sync" ? Visibility.Visible : Visibility.Collapsed;
         SettingsPage.Visibility = page == "Settings" ? Visibility.Visible : Visibility.Collapsed;
         LastInteraction = DateTimeOffset.UtcNow;
-        if (page == "Clients") RefreshSources(); if (page == "Sync") RefreshCloud();
+        if (page == "Clients") RefreshSources(); if (page == "Sync") { SyncPage.ScrollToTop(); RefreshCloud(); }
     }
     void ShowMain() { Show(); WindowState = WindowState.Normal; Activate(); }
     void Minimize_Click(object sender, RoutedEventArgs e) => SystemCommands.MinimizeWindow(this);
@@ -162,10 +180,10 @@ public partial class MainWindow : Window
         if (e.Key != Key.Enter || sender is not Button button) return;
         button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent)); e.Handled = true;
     }
-    void OnClosing(object? sender, CancelEventArgs e) { if (!quit) { e.Cancel = true; if (demo) Quit(); else Hide(); } }
+    void OnClosing(object? sender, CancelEventArgs e) { if (!quit) { e.Cancel = true; if (demo || service is null) Quit(); else Hide(); } }
     public void Quit()
     {
-        if (busy) { quitPending = true; stopping.Cancel(); Hide(); return; }
+        if (busy || savingSettings) { quitPending = true; stopping.Cancel(); Hide(); return; }
         quit = true; SystemEvents.UserPreferenceChanged -= OnSystemPreferenceChanged; timer.Stop(); stopping.Cancel(); foreach (var w in watchers) w.Dispose(); watchers.Clear();
         showWait?.Unregister(null); showSignal?.Dispose(); tray?.Dispose(); service?.Dispose(); stopping.Dispose();
         windowWorkArea?.Dispose(); windowWorkArea = null;
@@ -188,9 +206,7 @@ public partial class MainWindow : Window
         // An unchanged background scan must not replace an unrelated update or settings notice.
         if (!announce && !syncNotice && Notice.Visibility == Visibility.Visible) return;
         var pending = result.LocalSourceStatuses.Count(status => status.Readiness != LocalSourceReadiness.Ready);
-        var text = pending > 0
-            ? (vm.English ? $"{pending} account source(s) need attention. Open Clients for the next step. Last valid data is kept." : $"{pending} Account-Quelle(n) benötigen Aufmerksamkeit. Unter Clients findest du den nächsten Schritt. Gültige Daten bleiben erhalten.")
-            : (vm.English ? "Sync needs attention. Last valid data is kept. See local diagnostics in Settings." : "Der Abgleich benötigt Aufmerksamkeit. Gültige Daten bleiben erhalten. Details stehen in der lokalen Diagnose unter Einstellungen.");
+        var text = SyncIssuePresentation.Notice(result, vm.English)!;
         NoticeText.Text = text; Notice.Visibility = Visibility.Visible;
         NoticeSourceButton.Visibility = pending > 0 ? Visibility.Visible : Visibility.Collapsed; syncNotice = true;
         if (announce && !IsVisible && tray != null)
@@ -207,12 +223,13 @@ public partial class MainWindow : Window
     }
     async Task ScanAsync()
     {
-        if (service == null || busy) return; busy = true; vm.IsIdle = false; vm.Status = vm.Text("Busy");
+        if (service == null || busy || savingSettings) return; busy = true; vm.IsIdle = false; vm.Status = vm.Text("Busy");
         try
         {
             var result = await service.SyncNowAsync(stopping.Token);
             vm.RecordCheck(result.CompletedAt);
             vm.SetObservations(service.GetCharacters(), service.GetRemovedCharacters());
+            vm.Progress.SetProgress(service.GetProgress());
             vm.Status = vm.Text(result.Success ? (result.SourceCount > 0 ? "Active" : "Unconfigured") : "Attention");
             DiagnosticsText.Text = SourceStatusPresentation.Diagnostics(result, service.GetConfiguration().Sources, vm.English);
             UpdateSyncNotice(result);
@@ -292,7 +309,7 @@ public partial class MainWindow : Window
         {
             try
             {
-                var watcher = new FileSystemWatcher(path) { NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.Size };
+                var watcher = new FileSystemWatcher(path) { NotifyFilter = NotifyFilters.FileName | NotifyFilters.LastWrite | NotifyFilters.Size | NotifyFilters.Attributes };
                 FileSystemEventHandler handler = (_, _) => Dispatcher.InvokeAsync(() => changed = DateTimeOffset.UtcNow);
                 watcher.Changed += handler; watcher.Created += handler; watcher.Deleted += handler; watcher.Renamed += (_, _) => Dispatcher.InvokeAsync(() => changed = DateTimeOffset.UtcNow);
                 watcher.Error += (_, _) => Dispatcher.InvokeAsync(() => changed = DateTimeOffset.UtcNow); watcher.EnableRaisingEvents = true; watchers.Add(watcher);
@@ -453,6 +470,13 @@ public partial class MainWindow : Window
         if (demo || service == null || busy) return;
         var picker = new OpenFolderDialog { Title = vm.Text("ChooseFolder") }; if (ShowFolderDialog(picker) != true) return;
         try { await service.JoinSyncFolderAsync(picker.FolderName, stopping.Token); RebuildWatchers(); RefreshCloud(); await ScanAsync(); }
+        catch (CloudFileNotLocalException ex)
+        {
+            var issue = new SyncIssue("cloud_file_not_local", ex.Message) { FilePath = ex.FilePath };
+            var message = SyncIssuePresentation.Diagnostics(issue, vm.English, joiningSyncFolder: true)!;
+            DiagnosticsText.Text = message;
+            Notify(message);
+        }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException) { Notify(ex.Message); }
     }
     async void Pause_Click(object sender, RoutedEventArgs e) { if (service == null || busy) return; service.PauseCloud(!service.GetConfiguration().CloudPaused); RebuildWatchers(); RefreshCloud(); await ScanAsync(); }
@@ -477,7 +501,11 @@ public partial class MainWindow : Window
     void RefreshSettingsState()
     {
         if (settingsDraft == null || SaveSettingsButton == null) return;
-        SaveSettingsButton.IsEnabled = settingsDraft.CanSave(busy || savingSettings);
+        var editable = !savingSettings && !loadingStoreSettings;
+        DeviceNameInput.IsEnabled = ThemeChoice.IsEnabled = LanguageChoice.IsEnabled = editable;
+        AutostartChoice.IsEnabled = editable && (demo || (AppDistribution.Current.IsStore
+            ? startupState is AppStartupState.Enabled or AppStartupState.Disabled : updater?.SupportsAutostart == true));
+        SaveSettingsButton.IsEnabled = settingsDraft.CanSave(busy || !editable);
         string? key = settingsDraft.Feedback == SettingsFeedbackState.Failed ? "SettingsSaveFailed"
             : !settingsDraft.IsValid ? "SettingsInvalidName"
             : settingsDraft.Feedback == SettingsFeedbackState.Saved ? "SettingsSaved"
@@ -489,11 +517,23 @@ public partial class MainWindow : Window
     }
     async void SaveSettings_Click(object sender, RoutedEventArgs e)
     {
-        if (settingsDraft?.CanSave(busy || savingSettings) != true) return;
+        if (settingsDraft?.CanSave(busy || savingSettings || loadingStoreSettings) != true) return;
         savingSettings = true; RefreshSettingsState();
         bool saved = false;
+        AppStartupState? previousStartup = null;
         try
         {
+            if (!demo && AppDistribution.Current.IsStore && settingsDraft.Current.Autostart != preferences.Autostart)
+            {
+                previousStartup = await StartupService.GetStateAsync();
+                startupState = await StartupService.SetEnabledAsync(settingsDraft.Current.Autostart);
+                if (settingsDraft.Current.Autostart && startupState != AppStartupState.Enabled)
+                {
+                    AutostartChoice.IsChecked = false;
+                    RefreshDistributionLabels();
+                    Notify(vm.English ? "Windows has not enabled automatic startup. You can manage it in Windows settings." : "Windows hat den Autostart nicht aktiviert. Du kannst ihn in den Windows-Einstellungen verwalten.");
+                }
+            }
             saved = settingsDraft.Save(PersistSettings);
             if (!saved) return;
             var values = settingsDraft.Saved;
@@ -502,8 +542,15 @@ public partial class MainWindow : Window
             SetLanguage(preferences.Language == "en"); ApplyTheme(preferences.Theme);
             RefreshSources(); RefreshCloud();
         }
-        catch (Exception ex) when (IsSettingsPersistenceError(ex)) { }
-        finally { savingSettings = false; RefreshSettingsState(); }
+        catch (Exception ex) when (IsSettingsPersistenceError(ex))
+        {
+            if (previousStartup.HasValue)
+                try { await StartupService.SetEnabledAsync(previousStartup == AppStartupState.Enabled); }
+                catch (Exception rollback) when (IsSettingsPersistenceError(rollback)) { Notify(rollback.Message); }
+            if (settingsDraft.Feedback != SettingsFeedbackState.Failed) Notify(ex.Message);
+        }
+        finally { savingSettings = false; RefreshSettingsState(); if (quitPending) Quit(); }
+        if (quit) return;
         if (saved) await ScanAsync();
     }
     void PersistSettings(SettingsValues values)
@@ -526,17 +573,18 @@ public partial class MainWindow : Window
             throw;
         }
     }
-    static bool IsSettingsPersistenceError(Exception ex) => ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or DbException or SecurityException or AggregateException;
+    static bool IsSettingsPersistenceError(Exception ex) => ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or DbException or SecurityException or AggregateException or System.Runtime.InteropServices.COMException;
     void ApplyAutostart(bool enabled)
     {
-        if (updater?.SupportsAutostart != true) return;
+        if (AppRuntime.IsSmokeTest || AppDistribution.Current.IsStore || updater?.SupportsAutostart != true) return;
         using var run = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run");
-        var stub = Path.Combine(updater.InstallDirectory ?? throw new IOException("Installation directory unavailable."), "Hourstone.Companion.exe");
-        if (!File.Exists(stub)) throw new IOException("Installed startup launcher is missing.");
-        if (enabled) run.SetValue("HourstoneCompanion", "\"" + stub + "\" --background"); else run.DeleteValue("HourstoneCompanion", false);
+        if (!enabled) { run.DeleteValue("HourstoneCompanion", false); return; }
+        var stub = StartupService.GetDirectLauncherPath(updater.InstallDirectory);
+        run.SetValue("HourstoneCompanion", "\"" + stub + "\" --background");
     }
     async void CheckUpdate_Click(object sender, RoutedEventArgs e)
     {
+        if (StoreSettingsVisible) { if (demo) return; var result = AppDistribution.Current.OpenStore(); if (!result.Succeeded) Notify(vm.English ? "Microsoft Store could not be opened." : "Der Microsoft Store konnte nicht geöffnet werden."); return; }
         if (updater == null) { UpdateText.Text = UpdateCoordinator.StatusMessage("NotInstalled", vm.English); return; }
         UpdateText.Text = await updater.CheckAsync(true);
     }
@@ -550,6 +598,17 @@ public partial class MainWindow : Window
     {
         if (!demo) return;
         (page switch { "clients" => ClientsNav, "sync" => SyncNav, "settings" => SettingsNav, _ => OverviewNav }).IsChecked = true;
+        vm.ShowProgress = page == "progress";
+        if (page == "progress") SetProgressPreview();
+    }
+    void PlaytimeTab_Checked(object sender, RoutedEventArgs e) { if (vm != null) vm.ShowProgress = false; }
+    public void SetProgressPreview()
+    {
+        if (!demo) return;
+        var examples = MainViewModel.DemoData();
+        examples.Add(examples[0] with { Guid = "Player-0000-PROGRESS-OLD", Name = "Lyréa", Class = "PRIEST" });
+        examples.Add(examples[0] with { Guid = "Player-0000-PROGRESS-UNKNOWN", Name = "Niralune", Class = "DRUID" });
+        vm.SetObservations(examples); vm.Progress.SetProgress(ProgressViewModel.DemoProgress(examples)); vm.ShowProgress = true;
     }
     public void SetRenderTheme(string theme)
     {
@@ -577,11 +636,34 @@ public partial class MainWindow : Window
         if (!demo) return;
         DeviceNameInput.Text = "Azeroth Laptop"; ThemeChoice.SelectedIndex = ThemeChoice.SelectedIndex == 1 ? 0 : 1;
     }
+    public void SetDiagnosticsPreview(string state)
+    {
+        if (!demo) return;
+        if (state != "cloud-file-not-local") throw new ArgumentException("Unknown diagnostics preview state.", nameof(state));
+        var result = SyncResult.Empty with
+        {
+            CompletedAt = DateTimeOffset.UtcNow,
+            Issues = [new SyncIssue("cloud_file_not_local", "Cloud file is not fully available locally.")
+            {
+                FilePath = @"C:\Synthetic Proton Drive\HourstoneSync\device-12345678-1234-1234-1234-123456789012.json"
+            }]
+        };
+        SetRenderPage("sync");
+        vm.Status = vm.Text("Attention");
+        DiagnosticsText.Text = SourceStatusPresentation.Diagnostics(result, [], vm.English);
+        UpdateSyncNotice(result);
+    }
     public void SetLongNamePreview()
     {
         if (demo) vm.SetObservations(MainViewModel.DemoData().Select((o, i) => i == 0 ? o with { Name = new string('W', 64), Realm = "A very long realm name for layout validation", Guild = "A very long synthetic guild name for layout validation", GuildUpdatedAt = o.UpdatedAt } : o));
     }
     public bool English => vm.English;
+    public async Task<bool> RunStartupSmokeAsync()
+    {
+        if (!AppRuntime.IsSmokeTest || demo || service is null) return false;
+        await ScanAsync();
+        return service.LastResult.Success && service.LastResult.CompletedAt != DateTimeOffset.MinValue;
+    }
     public bool CanApplyUpdate(DateTimeOffset noticeAt, bool wowRunning) => settingsDraft?.IsDirty != true && !savingSettings && UpdatePolicy.CanApply(busy, IsVisible, IsActive, modalOpen, LastInteraction, noticeAt, DateTimeOffset.UtcNow, wowRunning);
     public void PrepareUpdate() { timer.Stop(); }
     public void ResumeAfterUpdateFailure() => timer.Start();

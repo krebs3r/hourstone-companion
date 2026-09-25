@@ -5,7 +5,7 @@ using Hourstone.Companion.Core;
 
 namespace Hourstone.Companion.App;
 
-/// <summary>Presentation of local readiness only; none of this text is part of the sync protocol.</summary>
+/// <summary>Presentation of local readiness and sync diagnostics; none of this text is part of the sync protocol.</summary>
 public static class SourceStatusPresentation
 {
     public static string Title(LocalSourceStatus status, bool english) => status.Readiness switch
@@ -51,6 +51,11 @@ public static class SourceStatusPresentation
         var coveredSources = new HashSet<string>(StringComparer.Ordinal);
         foreach (var issue in result.Issues)
         {
+            if (SyncIssuePresentation.Diagnostics(issue, english) is { } diagnostic)
+            {
+                lines.Add(diagnostic);
+                continue;
+            }
             var status = result.LocalSourceStatuses.FirstOrDefault(item => issue.SourceId is not null && item.SourceId == issue.SourceId);
             var source = sources.FirstOrDefault(item => issue.SourceId is not null && item.SourceId == issue.SourceId);
             if (status is null && source is not null)

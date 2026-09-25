@@ -1,81 +1,105 @@
-# Hourstone Companion 0.1.6
+# Hourstone Companion 0.2.0
 
-**[Windows-Installer herunterladen](https://github.com/krebs3r/hourstone-companion/releases/download/v0.1.6/HourstoneCompanion-win-Setup.exe)** · **[Portable herunterladen](https://github.com/krebs3r/hourstone-companion/releases/download/v0.1.6/HourstoneCompanion-win-Portable.zip)**
+Windows 11 x64 · .NET enthalten / .NET included
 
-Windows 11 x64 · Für die normale Installation den Installer verwenden. Das Portable-Paket vor dem Start vollständig entpacken.
+- [Windows-Installer herunterladen / Download Windows installer](https://github.com/krebs3r/hourstone-companion/releases/download/v0.2.0/HourstoneCompanion-win-Setup.exe)
+- [Portable-Ausgabe herunterladen / Download portable edition](https://github.com/krebs3r/hourstone-companion/releases/download/v0.2.0/HourstoneCompanion-win-Portable.zip)
+- [SHA-256-Prüfsummen / SHA-256 checksums](https://github.com/krebs3r/hourstone-companion/releases/download/v0.2.0/SHA256SUMS)
 
 ## Deutsch
 
-Hourstone Companion ergänzt das WoW-Addon optional um eine App für **Windows 11
-x64**. Sie zeigt gespeicherte Spielzeit, Klassen und Gilden über Retail, Mists
-Classic, TBC Anniversary und Classic Era hinweg an. Charaktere und Gilden lassen
-sich suchen; Client- und Realmfilter helfen bei der Übersicht.
+**Vor dem Update:** Alle Companions einer Synchronisierungsgruppe gemeinsam auf
+**0.2.0** aktualisieren. Neue Cloud-Snapshots verwenden Protokoll 4 und können von
+älteren Companions nicht gelesen werden. Bestehende Snapshots bleiben lesbar;
+Einstellungen, Spielzeit, Sichtbarkeit und Sync-Gruppe bleiben erhalten.
+Die lokale Datenbank wird auf Schema 2 migriert; ältere Companions können dieses
+Profil anschließend nicht mehr öffnen.
 
-Die App liest ausgewählte WoW-Accounts lokal ein und kann die Daten eigener PCs
-über einen dauerhaft lokal verfügbaren Dropbox-, OneDrive- oder anderen
-Synchronisierungsordner austauschen. Ein eigenes Companion-Konto ist nicht nötig.
-Aus der Übersicht gelöschte Einträge lassen sich wiederherstellen; WoW-Charaktere
-und gespeicherte Spielzeit bleiben erhalten. Das Addon funktioniert auch ohne App.
+### Neu und verbessert
 
-**Neu in 0.1.6:**
+- Retail-Fortschritt mit Schlüsselstein, Wochenbestwert und allen neun Plätzen der
+  Großen Schatzkammer. Charakterdetails zeigen Quelle, Schwierigkeit und Zeitpunkt;
+  unbekannte, bestätigte leere und veraltete Werte bleiben unterscheidbar.
+- Fortschritt zwischen eigenen PCs und zurück ins Addon synchronisieren. Jede
+  Fortschrittsfamilie behält ihre eigene Quelle und Zeit; empfangene Werte werden
+  nicht erneut als lokale Messungen veröffentlicht.
+- Verständliche Hinweise für noch nicht lokal verfügbare Cloud-Dateien, auch für
+  Proton Drive. Sobald Dateien lesbar sind, werden sie erneut geprüft. Gültige
+  gespeicherte Daten bleiben bei Lesefehlern erhalten.
+- Lokale Diagnose unter **Synchronisierung**, verbesserte Credits und korrigierter
+  Mausfokus der Titelleisten-Schaltflächen.
+- Vorbereitung der Store-Ausgabe mit eigenem Profil, Store-Updates, optionaler
+  Datenübernahme und Anleitung zum manuellen Abschalten des bisherigen Autostarts.
+  Die Direktversion nutzt weiterhin GitHub-Updates.
 
-- Der senkrechte Trennstrich zwischen Navigation und Inhalt entfällt.
-- Ein dezenter Mülleimer rechts neben „Aktualisiert“ ersetzt den Löschbutton unter der Tabelle. Jede Zeile lässt sich direkt löschen; die Bestätigung bleibt erhalten.
-- Gelöschte Charaktere erhalten an derselben Stelle ein Wiederherstellen-Symbol. Beide Aktionen unterstützen Tastaturfokus und deutsche sowie englische Tooltips.
-- Der Text unter „Lokale Diagnose“ verwendet Consolas.
+**Addon:** Spielzeit, Gilden und Sichtbarkeit benötigen 0.2.2 oder neuer; lokale
+Retail-Fortschrittsdaten 0.3.1 oder neuer. Der Rückweg des Fortschritts ins Spiel
+benötigt mindestens 0.3.2 mit Protokoll-4-Kennung.
+[Addon 0.3.3 herunterladen](https://github.com/krebs3r/hourstone-azeroth-hours/releases/tag/v0.3.3).
 
-Benötigt **Hourstone 0.2.2 oder neuer**. Einstellungen, Spielzeitdaten und
-Wiederherstellungen bleiben erhalten; das Synchronisierungsprotokoll bleibt bei
-Version 3. Falls CurseForge noch eine ältere Addon-Version anbietet, verwende
-[Hourstone 0.2.3 auf GitHub](https://github.com/krebs3r/hourstone-azeroth-hours/releases/tag/v0.2.3).
+**Unsignierte GitHub-Pakete:** Windows kann einen unbekannten Herausgeber anzeigen
+oder die Installation blockieren. Beim früheren lokalen Setup-Test wurde der
+Installer von Windows Code Integrity blockiert. Die Portable-ZIP vollständig
+entpacken und über den enthaltenen Rootlauncher starten.
 
-**Unsignierte frühe Version.** Installer und Portable-Paket enthalten die
-.NET-Laufzeit. Windows kann einen unbekannten Herausgeber anzeigen. Lade die
-Pakete aus diesem Repository herunter; Prüfsummen liegen dem Release bei.
+**Store-Status:** Paket 1.0.1.0 (Produkt 0.2.0) wurde am 25. September 2026 erneut
+zur Zertifizierung eingereicht. Die Freigabe steht aus. Dieses GitHub-Release
+bedeutet keine Store-Veröffentlichung.
 
-Release-Build und 242 automatisierte Tests sind erfolgreich. Die Oberfläche wurde
-in Hell/Dunkel bei 100 %, 150 % und 200 % sowie in schmalen Fenstern geprüft.
-Löschen, Abbrechen, Wiederherstellen und die Sperre während des Abgleichs wurden
-mit Beispieldaten geprüft. Installer- und Portable-Pakete wurden erstellt; die
-Anwendung aus beiden Paketstufen wurde durch Renderprüfungen validiert.
-Ein lokales Upgrade von 0.1.5 auf 0.1.6 wurde noch nicht praktisch geprüft.
-Der vollständige Austausch über Dropbox oder OneDrive zwischen zwei PCs ist
-noch nicht praktisch geprüft; eine erfolgreiche automatische Updateinstallation
-von einer zuvor veröffentlichten Version wurde noch nicht nachgewiesen.
+**Validierung:** 341 .NET-Tests und 40 Python-Prüfungen bestanden. Die vorhandene
+Paketabnahme umfasst 125 erweiterte Renderfälle, Paket-/Portable-Renderprüfungen
+und einen isolierten tatsächlichen Portable-Start. Die Release-Pipeline baut
+frische Pakete und wiederholt diese automatisierten Prüfungen vor Veröffentlichung.
+Echter Austausch über Dropbox, OneDrive oder Proton Drive zwischen zwei PCs,
+WoW-Abnahme und automatisches Update von einer öffentlichen Vorversion sind nicht
+vollständig praktisch geprüft. Für den Store bleiben vollständige Einrichtung/
+Übernahme, Tray-Bedienung danach und Autostart nach Windows-Anmeldung offen.
+[Prüfnachweise und Grenzen](https://github.com/krebs3r/hourstone-companion/blob/v0.2.0/docs/store/CERTIFICATION-FIX-2026-09-24.md).
 
 ## English
 
-**[Download Windows installer](https://github.com/krebs3r/hourstone-companion/releases/download/v0.1.6/HourstoneCompanion-win-Setup.exe)** · **[Download portable](https://github.com/krebs3r/hourstone-companion/releases/download/v0.1.6/HourstoneCompanion-win-Portable.zip)**
+**Before updating:** Upgrade all Companions in a synchronization group to **0.2.0
+together**. New cloud snapshots use protocol 4 and cannot be read by older
+Companions. Existing snapshots remain readable; settings, playtime, visibility
+and the sync group are retained. The local database migrates to schema 2;
+older Companions can no longer open that profile after migration.
 
-Use the installer for a normal installation. Fully extract the portable package before running it.
+### New and improved
 
-Hourstone Companion is an optional **Windows 11 x64** app for the WoW addon.
-Browse saved playtime, classes and guilds across Retail, Mists Classic, TBC
-Anniversary and Classic Era, with search and client/realm filters. Read selected
-accounts locally and synchronize your own PCs through a locally available Dropbox,
-OneDrive or other synchronized folder, without a Companion account. Reversible
-deletion from the overview preserves the WoW character and saved playtime. The
-addon also works independently.
+- Retail progress with the owned keystone, weekly best and all nine Great Vault
+  slots. Character details show source, difficulty and time, distinguishing
+  unknown, confirmed-empty and outdated values.
+- Progress exchange between your PCs and back into the addon. Each progress
+  family keeps its own source and timestamp; received values are never
+  republished as local observations.
+- Clear guidance for cloud files that are not yet locally available, including
+  Proton Drive. Files are checked again when readable; valid cached data survives
+  read errors.
+- Local diagnostics under **Synchronization**, improved credits and corrected
+  mouse-focus behavior for title-bar buttons.
+- Store preparation with a separate profile, Store updates, optional data transfer
+  and guidance for manually disabling the previous edition's startup. Direct
+  installations continue to use GitHub updates.
 
-Version 0.1.6 removes the vertical separator between navigation and content. A
-subtle trash icon to the right of **Updated** replaces the delete button below
-the table. Each row can be deleted directly, with confirmation. **Deleted
-characters** uses a restore icon in the same position. Both actions support
-keyboard focus and German/English tooltips. **Local diagnostics** uses Consolas.
+**Addon:** Playtime, guilds and visibility require 0.2.2 or later; local Retail
+progress requires 0.3.1 or later. Sending progress back into WoW requires at least
+0.3.2 with its protocol-4 capability.
+[Download addon 0.3.3](https://github.com/krebs3r/hourstone-azeroth-hours/releases/tag/v0.3.3).
 
-Requires **Hourstone 0.2.2 or later**. Protocol 3, existing settings, observations
-and restoration controls are preserved. If CurseForge still offers an older addon,
-use [Hourstone 0.2.3 on GitHub](https://github.com/krebs3r/hourstone-azeroth-hours/releases/tag/v0.2.3).
+**Unsigned GitHub packages:** Windows may show an unknown publisher or block
+installation. Windows Code Integrity blocked the installer during an earlier
+local setup test. Fully extract the portable ZIP and start its root launcher.
 
-**Unsigned early release.** The installer and portable package include the .NET
-runtime. Windows may show an unknown publisher. Download from this repository;
-checksums are included with the release.
+**Store status:** Package 1.0.1.0 (product 0.2.0) was resubmitted for certification
+on 25 September 2026. Approval is pending. This GitHub release does not establish
+Store availability.
 
-The Release build and all 242 automated tests passed. Dark/light layouts were
-checked at 100%, 150% and 200%, including compact windows. Deletion, cancellation,
-restoration and blocking actions during synchronization were verified with sample
-data. Installer and portable packages were built, with render checks of the
-staged and extracted portable applications. A local 0.1.5-to-0.1.6 upgrade,
-end-to-end Dropbox/OneDrive exchange between two PCs and automatic update
-installation from a previously published version have not yet been practically
-verified.
+**Validation:** 341 .NET tests and 40 Python checks passed. Existing package
+validation covers 125 extended render cases, package/portable render checks and
+an isolated real portable startup. The release pipeline builds fresh packages
+and repeats these automated checks before publication. Real two-PC exchange
+through Dropbox, OneDrive or Proton Drive, native WoW acceptance and automatic
+updating from a public previous version have not been fully practically verified.
+Full Store setup/transfer, subsequent tray operation and startup after Windows
+sign-in remain unverified.
+[Validation evidence and limits](https://github.com/krebs3r/hourstone-companion/blob/v0.2.0/docs/store/CERTIFICATION-FIX-2026-09-24.md).

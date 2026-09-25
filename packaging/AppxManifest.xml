@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+         xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+         xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
+         xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+         xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+         IgnorableNamespaces="uap uap10 desktop rescap">
+  <Identity Name="REQUIRES-BUILD-CONFIGURATION" Publisher="CN=REQUIRES-BUILD-CONFIGURATION" Version="1.0.0.0" ProcessorArchitecture="x64" />
+  <Properties>
+    <DisplayName>Hourstone Companion</DisplayName><PublisherDisplayName>REQUIRES-BUILD-CONFIGURATION</PublisherDisplayName><Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+  <Resources><Resource Language="de-de" /><Resource Language="en-us" /></Resources>
+  <Dependencies><TargetDeviceFamily Name="Windows.Desktop" MinVersion="10.0.22000.0" MaxVersionTested="10.0.26100.0" /></Dependencies>
+  <Applications>
+    <Application Id="HourstoneCompanion" Executable="Hourstone.Companion.exe" uap10:RuntimeBehavior="packagedClassicApp" uap10:TrustLevel="mediumIL">
+      <uap:VisualElements DisplayName="Hourstone Companion" Description="Hourstone Companion" Square150x150Logo="Assets\Square150x150Logo.png" Square44x44Logo="Assets\Square44x44Logo.png" BackgroundColor="transparent" />
+      <Extensions>
+        <desktop:Extension Category="windows.startupTask" Executable="Hourstone.Companion.exe" EntryPoint="Windows.FullTrustApplication">
+          <desktop:StartupTask TaskId="HourstoneCompanionStartup" Enabled="false" DisplayName="Hourstone Companion" />
+        </desktop:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+  <Capabilities><rescap:Capability Name="runFullTrust" /></Capabilities>
+</Package>

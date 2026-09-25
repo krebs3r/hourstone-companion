@@ -16,7 +16,8 @@ public sealed class UpdateCoordinator
         ["NotInstalled"] = ("App-Updates stehen nach Installation zur Verfügung.", "Install the application to enable app updates."),
         ["NoNewerVersion"] = ("Keine neuere App-Version verfügbar.", "No newer app version is available."),
         ["Ready"] = ("App-Update heruntergeladen. Die Installation wartet auf ein geschlossenes WoW und ein unbenutztes App-Fenster.", "App update downloaded. Installation is waiting for WoW to close and the app window to be idle."),
-        ["Unavailable"] = ("App-Updateprüfung momentan nicht verfügbar. Der lokale Abgleich läuft weiter.", "App update check unavailable. Local sync continues.")
+        ["Unavailable"] = ("App-Updateprüfung momentan nicht verfügbar. Der lokale Abgleich läuft weiter.", "App update check unavailable. Local sync continues."),
+        ["Store"] = ("Neue Versionen erhältst du über den Microsoft Store.", "New versions are available through Microsoft Store.")
     };
     public static string StatusMessage(string key, bool english) => english ? Messages[key].En : Messages[key].De;
     public static string LocalizeStatus(string message, bool english)
@@ -24,19 +25,27 @@ public sealed class UpdateCoordinator
         var key = Messages.FirstOrDefault(entry => entry.Value.De == message || entry.Value.En == message).Key;
         return key == null ? message : StatusMessage(key, english);
     }
-    readonly UpdateManager manager = new(new GithubSource("https://github.com/krebs3r/hourstone-companion", null, false));
+    readonly UpdateManager? manager;
     readonly MainWindow window; readonly Action<string> notify;
     DateTimeOffset lastCheck = DateTimeOffset.MinValue, noticeAt = DateTimeOffset.MaxValue;
     VelopackAsset? pending; bool busy, announced;
-    public bool IsInstalled => manager.IsInstalled;
-    public bool SupportsAutostart => manager.IsInstalled && !manager.IsPortable;
-    public string? InstallDirectory => Velopack.Locators.VelopackLocator.Current.RootAppDir;
+    public bool IsInstalled => !AppRuntime.IsSmokeTest && (AppDistribution.Current.IsStore || manager?.IsInstalled == true);
+    public bool SupportsAutostart => !AppRuntime.IsSmokeTest && (AppDistribution.Current.IsStore || (manager?.IsInstalled == true && !manager.IsPortable));
+    public string? InstallDirectory => AppDistribution.Current.InstallDirectory;
     string T(string de, string en) => window.English ? en : de;
-    public UpdateCoordinator(MainWindow window, Action<string> notify) { this.window = window; this.notify = notify; pending = manager.IsInstalled ? manager.UpdatePendingRestart : null; }
+    public UpdateCoordinator(MainWindow window, Action<string> notify)
+    {
+        this.window = window; this.notify = notify;
+        if (!AppDistribution.Current.IsStore)
+        {
+            manager = new(new GithubSource("https://github.com/krebs3r/hourstone-companion", null, false));
+            pending = manager.IsInstalled ? manager.UpdatePendingRestart : null;
+        }
+    }
     void Announce() { if (announced) return; announced = true; noticeAt = DateTimeOffset.UtcNow; notify(T("Ein Update ist bereit. Installation erfolgt bei geschlossenem WoW und unbenutztem App-Fenster.", "An update is ready and will install when WoW is closed and this window is idle.")); }
     public async Task TickAsync()
     {
-        if (busy || !IsInstalled) return;
+        if (manager is null || busy || !IsInstalled) return;
         if (pending != null) Announce();
         if (pending == null && DateTimeOffset.UtcNow - lastCheck >= TimeSpan.FromDays(1)) await CheckAsync(false);
         if (pending != null && window.CanApplyUpdate(noticeAt, WoWRunning()))
@@ -48,6 +57,11 @@ public sealed class UpdateCoordinator
     }
     public async Task<string> CheckAsync(bool manual)
     {
+        if (manager is null)
+        {
+            if (manual) AppDistribution.Current.OpenStore();
+            return StatusMessage("Store", window.English);
+        }
         if (busy) return StatusMessage("Busy", window.English);
         if (!IsInstalled) return StatusMessage("NotInstalled", window.English);
         busy = true; lastCheck = DateTimeOffset.UtcNow;

@@ -150,8 +150,94 @@ public sealed class SyncIntegrationTests : IDisposable
         var remote = Sample.Snapshot("11111111-1111-1111-1111-111111111111", 1, Sample.Item("hs-remote", 500, "Player-5-AA")) with { GroupId = config.GroupId! };
         File.WriteAllText(path, ObservationRules.CanonicalSnapshot(remote)); await a.SyncNowAsync();
         File.WriteAllText(path, ObservationRules.CanonicalSnapshot(remote with { FormatVersion = 999, Revision = 2, Observations = [] }));
-        Assert.Contains((await a.SyncNowAsync()).Issues, issue => issue.Code == "snapshot_rejected"); Assert.Equal(2, a.GetCharacters().Count);
-        File.WriteAllText(path, "{ partial"); Assert.Contains((await a.SyncNowAsync()).Issues, issue => issue.Code == "snapshot_rejected"); Assert.Equal(2, a.GetCharacters().Count);
+        Assert.Contains((await a.SyncNowAsync()).Issues, issue => issue.Code == "snapshot_rejected" && issue.FilePath == path); Assert.Equal(2, a.GetCharacters().Count);
+        File.WriteAllText(path, "{ partial"); Assert.Contains((await a.SyncNowAsync()).Issues, issue => issue.Code == "snapshot_rejected" && issue.FilePath == path); Assert.Equal(2, a.GetCharacters().Count);
+    }
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UnavailablePeerKeepsItsCacheWithoutBlockingHealthyPeersAndRecovers(bool offline)
+    {
+        var a = Service("A"); Configure(a, "A", "hs-a"); await a.JoinSyncFolderAsync(Path.Combine(root, "Cloud")); await a.SyncNowAsync();
+        var config = a.GetConfiguration(); var path = Path.Combine(config.CloudFolder!, "peer.json");
+        var peer = Sample.Snapshot("11111111-1111-1111-1111-111111111111", 1, Sample.Item("hs-peer", 200, "Player-2-AA")) with { GroupId = config.GroupId! };
+        File.WriteAllText(path, ObservationRules.CanonicalSnapshot(peer)); await a.SyncNowAsync();
+        peer = peer with { Revision = 2, Observations = [peer.Observations[0] with { Seconds = 500 }] };
+        File.WriteAllText(path, ObservationRules.CanonicalSnapshot(peer));
+        var healthy = Sample.Snapshot("22222222-2222-2222-2222-222222222222", 1, Sample.Item("hs-healthy", 700, "Player-3-AA")) with { GroupId = config.GroupId! };
+        File.WriteAllText(Path.Combine(config.CloudFolder!, "healthy.json"), ObservationRules.CanonicalSnapshot(healthy));
+        var attributes = File.GetAttributes(path); FileStream? held = null;
+        try
+        {
+            if (offline) File.SetAttributes(path, attributes | FileAttributes.Offline);
+            else held = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+            var blocked = await a.SyncNowAsync(); var issue = Assert.Single(blocked.Issues);
+            Assert.Equal(offline ? "cloud_file_not_local" : "snapshot_read_failed", issue.Code); Assert.Equal(path, issue.FilePath);
+            Assert.True(blocked.CloudPublished); Assert.Equal(3, a.GetCharacters().Count);
+            Assert.Equal(200, a.GetCharacters().Single(item => item.SourceId == "hs-peer").Seconds);
+            Assert.Equal(700, a.GetCharacters().Single(item => item.SourceId == "hs-healthy").Seconds);
+        }
+        finally { held?.Dispose(); if (offline) File.SetAttributes(path, attributes); }
+        var recovered = await a.SyncNowAsync(); Assert.True(recovered.Success); Assert.True(recovered.CloudPublished);
+        Assert.Equal(500, a.GetCharacters().Single(item => item.SourceId == "hs-peer").Seconds);
+    }
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task UnreadableOwnSnapshotIsNotOverwrittenAndPublicationRecovers(bool offline)
+    {
+        var a = Service("A"); var source = Configure(a, "A", "hs-a"); await a.JoinSyncFolderAsync(Path.Combine(root, "Cloud")); await a.SyncNowAsync();
+        var config = a.GetConfiguration(); var path = Path.Combine(config.CloudFolder!, config.DeviceId + ".json"); var original = File.ReadAllText(path);
+        File.WriteAllText(source.SavedVariablesPath, Sample.Lua(source, Sample.Item(source.SourceId, 300)));
+        var attributes = File.GetAttributes(path); FileStream? held = null;
+        try
+        {
+            if (offline) File.SetAttributes(path, attributes | FileAttributes.Offline);
+            else held = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+            var blocked = await a.SyncNowAsync(); var issue = Assert.Single(blocked.Issues);
+            Assert.Equal(offline ? "cloud_file_not_local" : "snapshot_read_failed", issue.Code); Assert.Equal(path, issue.FilePath);
+            Assert.False(blocked.CloudPublished); Assert.Equal(300, Assert.Single(a.GetCharacters()).Seconds);
+        }
+        finally { held?.Dispose(); if (offline) File.SetAttributes(path, attributes); }
+        Assert.Equal(original, File.ReadAllText(path));
+        var recovered = await a.SyncNowAsync(); Assert.True(recovered.Success); Assert.True(recovered.CloudPublished);
+        Assert.Equal(300, Assert.Single(ReadPublished(a).Observations).Seconds);
+    }
+    [Theory]
+    [InlineData("group.json", false)]
+    [InlineData("group.json", true)]
+    [InlineData("group (conflict).json", false)]
+    [InlineData("group (conflict).json", true)]
+    public async Task UnavailableGroupFileReportsItsPathAndBlocksPublicationUntilRecovery(string fileName, bool offline)
+    {
+        var a = Service("A"); var source = Configure(a, "A", "hs-a"); await a.JoinSyncFolderAsync(Path.Combine(root, "Cloud")); await a.SyncNowAsync();
+        var config = a.GetConfiguration(); var path = Path.Combine(config.CloudFolder!, fileName);
+        if (fileName != "group.json") File.Copy(Path.Combine(config.CloudFolder!, "group.json"), path);
+        var ownPath = Path.Combine(config.CloudFolder!, config.DeviceId + ".json"); var original = File.ReadAllText(ownPath);
+        File.WriteAllText(source.SavedVariablesPath, Sample.Lua(source, Sample.Item(source.SourceId, 300)));
+        var attributes = File.GetAttributes(path); FileStream? held = null;
+        try
+        {
+            if (offline) File.SetAttributes(path, attributes | FileAttributes.Offline);
+            else held = new FileStream(path, FileMode.Open, FileAccess.ReadWrite, FileShare.None);
+            var blocked = await a.SyncNowAsync(); var issue = Assert.Single(blocked.Issues);
+            Assert.Equal(offline ? "cloud_file_not_local" : "snapshot_read_failed", issue.Code); Assert.Equal(path, issue.FilePath);
+            Assert.False(blocked.CloudPublished); Assert.Equal(original, File.ReadAllText(ownPath));
+        }
+        finally { held?.Dispose(); if (offline) File.SetAttributes(path, attributes); }
+        var recovered = await a.SyncNowAsync(); Assert.True(recovered.Success); Assert.True(recovered.CloudPublished);
+        Assert.Equal(300, Assert.Single(ReadPublished(a).Observations).Seconds);
+    }
+    [Fact]
+    public async Task AggregateSnapshotLimitStillBlocksPublication()
+    {
+        var a = Service("A"); Configure(a, "A", "hs-a"); await a.JoinSyncFolderAsync(Path.Combine(root, "Cloud")); await a.SyncNowAsync();
+        var config = a.GetConfiguration(); var ownPath = Path.Combine(config.CloudFolder!, config.DeviceId + ".json"); var original = File.ReadAllText(ownPath);
+        foreach (var name in new[] { "large-a.json", "large-b.json" })
+            using (var file = new FileStream(Path.Combine(config.CloudFolder!, name), FileMode.CreateNew)) file.SetLength(33L * 1024 * 1024);
+        var blocked = await a.SyncNowAsync(); Assert.False(blocked.CloudPublished);
+        Assert.Contains(blocked.Issues, issue => issue.Code == "cloud_unavailable" && issue.Message.Contains("total snapshot size limit", StringComparison.Ordinal));
+        Assert.Equal(original, File.ReadAllText(ownPath)); Assert.Single(a.GetCharacters());
     }
     [Theory]
     [InlineData("_ptr_")]
@@ -203,7 +289,7 @@ public sealed class SyncIntegrationTests : IDisposable
         await b.SyncNowAsync(); await a.SyncNowAsync();
         var row = Assert.Single(a.GetCharacters()); Assert.Equal(220, row.Seconds); Assert.Equal(local.ServerAt, row.ServerAt); Assert.Equal("Neue Gilde", row.Guild);
         Assert.Equal("Old guild", Assert.Single(ReadPublished(a).Observations).Guild);
-        Assert.Equal("Neue Gilde", Assert.Single(ReadPublished(b).Observations).Guild); Assert.Equal(3, ReadPublished(a).FormatVersion);
+        Assert.Equal("Neue Gilde", Assert.Single(ReadPublished(b).Observations).Guild); Assert.Equal(4, ReadPublished(a).FormatVersion);
         Assert.Contains("guild=\"Neue Gilde\"", File.ReadAllText(Path.Combine(sourceA.DataAddonDirectory, "Data.lua")));
         remote = remote with { Guild = "", GuildUpdatedAt = 1700000400 };
         File.WriteAllText(sourceB.SavedVariablesPath, Sample.Lua(sourceB, remote));
@@ -225,7 +311,7 @@ public sealed class SyncIntegrationTests : IDisposable
         var config = a.GetConfiguration();
         var remote = Sample.Snapshot("11111111-1111-1111-1111-111111111111", 5, Sample.Item("hs-peer", 500, "Player-2-CD")) with { FormatVersion = 1, GroupId = config.GroupId! };
         var path = Path.Combine(config.CloudFolder!, "peer.json"); File.WriteAllText(path, ObservationRules.CanonicalSnapshot(remote));
-        await a.SyncNowAsync(); var legacyOwn = ReadPublished(a) with { FormatVersion = 1, Visibility = null };
+        await a.SyncNowAsync(); var legacyOwn = ReadPublished(a) with { FormatVersion = 1, Visibility = null, ProgressObservations = null };
         var legacyJson = ObservationRules.CanonicalSnapshot(legacyOwn); Assert.DoesNotContain("guild", legacyJson);
         a.Dispose(); services.Remove(a);
         using (var connection = new Microsoft.Data.Sqlite.SqliteConnection("Data Source=" + Path.Combine(root, "A", "app", "state.db")))
@@ -236,7 +322,7 @@ public sealed class SyncIntegrationTests : IDisposable
         }
         File.WriteAllText(Path.Combine(config.CloudFolder!, config.DeviceId + ".json"), legacyJson);
         a = Service("A"); var result = await a.SyncNowAsync(); Assert.True(result.Success, string.Join("; ", result.Issues));
-        var upgraded = ReadPublished(a); Assert.Equal(3, upgraded.FormatVersion); Assert.Equal(legacyOwn.Revision + 1, upgraded.Revision); Assert.Equal(config.DeviceId, upgraded.DeviceId);
+        var upgraded = ReadPublished(a); Assert.Equal(4, upgraded.FormatVersion); Assert.Equal(legacyOwn.Revision + 1, upgraded.Revision); Assert.Equal(config.DeviceId, upgraded.DeviceId);
         Assert.Equal(source.SourceId, Assert.Single(a.GetConfiguration().Sources).SourceId); Assert.Equal(2, a.GetCharacters().Count);
         Assert.Null(a.GetCharacters().Single(o => o.SourceId == "hs-peer").Guild);
         Assert.True((await a.SyncNowAsync()).Success); Assert.Equal(upgraded.Revision, ReadPublished(a).Revision);

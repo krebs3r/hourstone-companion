@@ -1,0 +1,72 @@
+<UserControl x:Class="Hourstone.Companion.App.ProgressView" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Foreground="{DynamicResource Text}">
+  <UserControl.Resources>
+    <DataTemplate x:Key="ProgressSlotTemplate">
+      <Border Background="{Binding Background}" CornerRadius="4" Width="25" Height="29" Margin="2,0" ToolTip="{Binding Tooltip}" AutomationProperties.Name="{Binding Tooltip}">
+        <TextBlock Text="{Binding Symbol}" Foreground="{Binding Foreground}" FontSize="17" HorizontalAlignment="Center" VerticalAlignment="Center" />
+      </Border>
+    </DataTemplate>
+    <ItemsPanelTemplate x:Key="SlotStrip"><StackPanel Orientation="Horizontal" HorizontalAlignment="Center" /></ItemsPanelTemplate>
+  </UserControl.Resources>
+  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="0,0,10,0">
+      <Border BorderBrush="{DynamicResource Line}" BorderThickness="1" Background="{DynamicResource Panel}" CornerRadius="6" Padding="0">
+        <StackPanel>
+          <Border BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1" Padding="18,14">
+            <StackPanel><TextBlock Text="{Binding Title}" FontSize="23" FontWeight="SemiBold" /><TextBlock Text="{Binding SavedState}" FontSize="14" Foreground="{DynamicResource Muted}" Margin="0,4,0,0" /></StackPanel>
+          </Border>
+          <Grid Margin="14,12"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="180" /></Grid.ColumnDefinitions>
+            <StackPanel><TextBlock Text="{Binding SearchLabel}" Foreground="{DynamicResource Muted}" FontSize="13" Margin="0,0,0,5" /><TextBox x:Name="ProgressSearchInput" Height="42" MinHeight="0" Text="{Binding Search,UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="{Binding SearchLabel}" /></StackPanel>
+            <StackPanel Grid.Column="2"><TextBlock Text="Realm" Foreground="{DynamicResource Muted}" FontSize="13" Margin="0,0,0,5" /><ComboBox x:Name="ProgressRealmChoice" ItemsSource="{Binding Realms}" SelectedItem="{Binding SelectedRealm}" AutomationProperties.Name="Realm" /></StackPanel>
+          </Grid>
+          <Grid>
+            <DataGrid x:Name="ProgressGrid" ItemsSource="{Binding Rows}" SelectedItem="{Binding Selected,Mode=TwoWay}" RowHeight="68" SelectionMode="Single" SelectionUnit="FullRow" MaxHeight="420" MinHeight="116" CanUserSortColumns="True" ScrollViewer.HorizontalScrollBarVisibility="Auto" AutomationProperties.Name="{Binding Title}">
+              <DataGrid.Columns>
+                <DataGridTemplateColumn Header="Charakter" Width="1.6*" MinWidth="175" SortMemberPath="Name"><DataGridTemplateColumn.CellTemplate><DataTemplate>
+                  <Grid ToolTip="{Binding Description}"><Grid.ColumnDefinitions><ColumnDefinition Width="43" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                    <Image Source="{Binding ClassIconPath}" Width="30" Height="30" Stretch="Uniform" HorizontalAlignment="Left" RenderOptions.BitmapScalingMode="HighQuality" />
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="16" /><TextBlock Text="{Binding Realm}" FontSize="13" Foreground="{DynamicResource Muted}" Margin="0,4,0,0" /></StackPanel>
+                  </Grid>
+                </DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Schlüsselstein" Width="1.15*" MinWidth="145"><DataGridTemplateColumn.CellTemplate><DataTemplate>
+                  <StackPanel VerticalAlignment="Center" ToolTip="{Binding KeystoneStatus}"><TextBlock Text="{Binding Keystone}" Foreground="{DynamicResource Gold}" FontSize="19" FontWeight="SemiBold" /><TextBlock Text="{Binding KeystoneName}" Foreground="{DynamicResource Muted}" FontSize="12" ToolTip="{Binding KeystoneName}" /><TextBlock Text="{Binding KeystoneWarning}" Foreground="{DynamicResource Gold}" FontSize="11" /></StackPanel>
+                </DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Woche" Width="1.05*" MinWidth="165"><DataGridTemplateColumn.CellTemplate><DataTemplate>
+                  <StackPanel VerticalAlignment="Center" ToolTip="{Binding WeeklyStatus}"><TextBlock Text="{Binding Weekly}" FontSize="19" /><TextBlock Text="{Binding WeeklyWarning}" FontSize="11" Foreground="{DynamicResource Gold}" /></StackPanel>
+                </DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Dungeons" Width="*" MinWidth="132"><DataGridTemplateColumn.CellTemplate><DataTemplate><ItemsControl ItemsSource="{Binding Dungeons}" ItemTemplate="{StaticResource ProgressSlotTemplate}" ItemsPanel="{StaticResource SlotStrip}" VerticalAlignment="Center" /></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Schlachtzüge" Width="*" MinWidth="148"><DataGridTemplateColumn.CellTemplate><DataTemplate><ItemsControl ItemsSource="{Binding Raids}" ItemTemplate="{StaticResource ProgressSlotTemplate}" ItemsPanel="{StaticResource SlotStrip}" VerticalAlignment="Center" /></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Welt" Width="*" MinWidth="132"><DataGridTemplateColumn.CellTemplate><DataTemplate><ItemsControl ItemsSource="{Binding World}" ItemTemplate="{StaticResource ProgressSlotTemplate}" ItemsPanel="{StaticResource SlotStrip}" VerticalAlignment="Center" /></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
+              </DataGrid.Columns>
+            </DataGrid>
+            <TextBlock Text="{Binding EmptyMessage}" Visibility="{Binding EmptyVisibility}" Margin="16,48,16,16" VerticalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" Foreground="{DynamicResource Muted}" />
+          </Grid>
+          <Border BorderBrush="{DynamicResource Line}" BorderThickness="0,1,0,0" Padding="14,10">
+            <WrapPanel><TextBlock Text="✓" Margin="0,0,6,0" Foreground="{DynamicResource Cyan}" /><TextBlock Text="{Binding UnlockedLabel}" FontSize="13" Margin="0,0,18,0" /><TextBlock Text="·" Margin="0,0,6,0" /><TextBlock Text="{Binding PendingLabel}" FontSize="13" Margin="0,0,18,0" /><TextBlock Text="?" Margin="0,0,6,0" /><TextBlock Text="{Binding UnknownLabel}" FontSize="13" Margin="0,0,18,0" /><TextBlock Text="◷" Margin="0,0,6,0" Foreground="{DynamicResource Gold}" /><TextBlock Text="{Binding StaleLabel}" FontSize="13" /></WrapPanel>
+          </Border>
+        </StackPanel>
+      </Border>
+      <Border x:Name="ProgressDetailsPanel" Visibility="{Binding DetailsVisibility}" BorderBrush="{DynamicResource Line}" BorderThickness="1" Background="{DynamicResource Panel}" CornerRadius="6" Margin="0,16,0,0" Padding="18">
+        <StackPanel DataContext="{Binding Selected}">
+          <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+            <StackPanel><TextBlock Text="{Binding Name}" FontSize="23" FontWeight="SemiBold" /><TextBlock Text="{Binding Description}" Foreground="{DynamicResource Muted}" FontSize="13" Margin="0,4,0,0" /></StackPanel>
+            <Button Grid.Column="1" Click="CloseDetails_Click" Content="✕" Padding="10,5" VerticalAlignment="Top" ToolTip="{Binding DataContext.CloseDetails,RelativeSource={RelativeSource AncestorType=UserControl}}" AutomationProperties.Name="{Binding DataContext.CloseDetails,RelativeSource={RelativeSource AncestorType=UserControl}}" />
+          </Grid>
+          <TextBlock Text="{Binding DetailsHint}" Visibility="{Binding HintVisibility}" TextWrapping="Wrap" Foreground="{DynamicResource Gold}" FontSize="14" Margin="0,15,0,0" />
+          <Grid Margin="0,18,0,15"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="16" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+            <StackPanel><TextBlock Text="{Binding DataContext.KeystoneLabel,RelativeSource={RelativeSource AncestorType=UserControl}}" FontSize="13" Foreground="{DynamicResource Muted}" /><WrapPanel Margin="0,5,0,0"><TextBlock Text="{Binding KeystoneName}" FontSize="18" Foreground="{DynamicResource Gold}" Margin="0,0,8,0" ToolTip="{Binding KeystoneName}" /><TextBlock Text="{Binding Keystone}" FontSize="18" Foreground="{DynamicResource Gold}" /></WrapPanel><TextBlock Text="{Binding KeystoneStatus}" FontSize="12" Foreground="{DynamicResource Muted}" Margin="0,4,0,0" /></StackPanel>
+            <StackPanel Grid.Column="2"><TextBlock Text="{Binding DataContext.WeeklyLabel,RelativeSource={RelativeSource AncestorType=UserControl}}" FontSize="13" Foreground="{DynamicResource Muted}" /><TextBlock Text="{Binding Weekly}" FontSize="18" Foreground="{DynamicResource Gold}" Margin="0,5,0,0" /><TextBlock Text="{Binding WeeklyStatus}" FontSize="12" Foreground="{DynamicResource Muted}" Margin="0,4,0,0" /></StackPanel>
+          </Grid>
+          <ItemsControl ItemsSource="{Binding VaultRows}"><ItemsControl.ItemTemplate><DataTemplate>
+            <Grid Margin="0,4"><Grid.ColumnDefinitions><ColumnDefinition Width="115" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <StackPanel VerticalAlignment="Center"><TextBlock Text="{Binding Name}" FontSize="14" FontWeight="SemiBold" /><TextBlock Text="{Binding RecordedAt}" FontSize="11" Foreground="{DynamicResource Muted}" Margin="0,4,0,0" ToolTip="{Binding RecordedAt}" /></StackPanel>
+              <ItemsControl Grid.Column="1" ItemsSource="{Binding Slots}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><UniformGrid Columns="3" /></ItemsPanelTemplate></ItemsControl.ItemsPanel><ItemsControl.ItemTemplate><DataTemplate>
+                <Border Background="{Binding Background}" CornerRadius="4" Margin="4,0" Padding="10,9" ToolTip="{Binding Tooltip}" AutomationProperties.Name="{Binding Tooltip}"><StackPanel><TextBlock Text="{Binding Progress}" Foreground="{Binding Foreground}" FontSize="13" FontWeight="SemiBold" TextWrapping="Wrap" /><TextBlock Text="{Binding Difficulty}" Foreground="{DynamicResource Muted}" FontSize="12" Margin="0,4,0,0" TextWrapping="Wrap" /></StackPanel></Border>
+              </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+            </Grid>
+          </DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+        </StackPanel>
+      </Border>
+      <TextBlock Text="{Binding Hint}" TextWrapping="Wrap" Foreground="{DynamicResource Muted}" FontSize="13" Margin="2,14,0,10" />
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

@@ -1,5 +1,5 @@
 {
-  "formatVersion": 3,
+  "formatVersion": 4,
   "sourceRepository": "https://github.com/krebs3r/hourstone-azeroth-hours",
   "sourceCommit": "c762764b20f2084573c151fddbf393c9d8598049",
   "files": {
@@ -12,6 +12,12 @@
     "docs/sync-protocol-v3.md": "f38e9568895ae02221bbde516af4ad5d7a580b13d39e8d849151fa5e6f775d34",
     "tests/Hourstone.Companion.Core.Tests/Fixtures/contract-v3.json": "1b653fbbe597fba3e91337e6e8c521420e2fb98b7bf06441e7ccee090f3ebae5",
     "tests/Hourstone.Companion.Core.Tests/Fixtures/snapshot-v3.json": "47192e2424cf322df4177c0f7eedb9ca470e00eb642fcf97506e802c7909d1d9",
-    "tests/Hourstone.Companion.Core.Tests/Fixtures/visibility-v3.json": "b0bb4fc0d1b5cce69fd35923606357b00b14f2e8b2e82d5a25dec83ddf781895"
-  }
+    "tests/Hourstone.Companion.Core.Tests/Fixtures/visibility-v3.json": "b0bb4fc0d1b5cce69fd35923606357b00b14f2e8b2e82d5a25dec83ddf781895",
+    "docs/sync-protocol-v4.md": "e0c964a75a91b5d725c2f2e6d6cb0b459443923dd438a9e7fcae1f8841216b53",
+    "tests/Hourstone.Companion.Core.Tests/Fixtures/progress-v4.json": "411dc36a1f62fa1ba8162fc77a56470eddb598a96a4ca34c6de869cc8c764342",
+    "tests/Hourstone.Companion.Core.Tests/Fixtures/snapshot-v4.json": "98ca6c7b0ad3c6fbec36cfb071f1eefa69e04bf919e005d4a983fd01a806d7a4"
+  },
+  "sourceCommitScope": "legacy-protocols-1-3-only",
+  "protocol4SourceCommit": "c3a28fbe3dff15e9e065f8e279058084b5b00bcb",
+  "protocol4SourceVersion": "0.3.2"
 }

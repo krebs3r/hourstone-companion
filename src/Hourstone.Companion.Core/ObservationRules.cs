@@ -65,12 +65,24 @@ public static class ObservationRules
     }
     public static void ValidateSnapshot(DeviceSnapshot snapshot, string groupId)
     {
-        if (snapshot is null || snapshot.FormatVersion is not (1 or 2 or 3) || !System.Guid.TryParseExact(snapshot.GroupId, "D", out _) || snapshot.GroupId != groupId ||
+        if (snapshot is null || snapshot.FormatVersion is not (1 or 2 or 3 or 4) || !System.Guid.TryParseExact(snapshot.GroupId, "D", out _) || snapshot.GroupId != groupId ||
             !System.Guid.TryParseExact(snapshot.DeviceId, "D", out _) || !ValidText(snapshot.DeviceName, 128) || snapshot.Revision <= 0 ||
             snapshot.Observations is null || snapshot.Observations.Count > MaximumObservations)
             throw new InvalidDataException("Unsupported or invalid device snapshot.");
-        if (snapshot.FormatVersion == 3 ? snapshot.Visibility is null : snapshot.Visibility is not null)
+        if (snapshot.FormatVersion >= 3 ? snapshot.Visibility is null : snapshot.Visibility is not null)
             throw new InvalidDataException("Visibility requires snapshot format 3 and a complete visibility list.");
+        if (snapshot.FormatVersion == 4 ? snapshot.ProgressObservations is null : snapshot.ProgressObservations is not null)
+            throw new InvalidDataException("Progress requires snapshot format 4 and a complete progress list.");
+        if (snapshot.ProgressObservations is not null)
+        {
+            if (snapshot.ProgressObservations.Count > ProgressRules.MaximumObservations) throw new InvalidDataException("Too many progress observations.");
+            var progressKeys = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var item in snapshot.ProgressObservations)
+            {
+                ProgressRules.Validate(item);
+                if (!progressKeys.Add(item.SourceId + "|" + ProgressRules.Identity(item))) throw new InvalidDataException("Duplicate progress observation in device snapshot.");
+            }
+        }
         if (snapshot.Visibility is not null)
         {
             if (snapshot.Visibility.Count > VisibilityRules.MaximumStates) throw new InvalidDataException("Too many visibility states.");
@@ -89,6 +101,8 @@ public static class ObservationRules
                 throw new InvalidDataException("Guild membership requires snapshot format 2.");
             if (!keys.Add(observation.SourceId + "|" + Identity(observation))) throw new InvalidDataException("Duplicate observation in device snapshot.");
         }
+        if (snapshot.FormatVersion == 4 && System.Text.Encoding.UTF8.GetByteCount(CanonicalSnapshot(snapshot)) > SavedVariablesReader.MaximumFileBytes)
+            throw new InvalidDataException("Snapshot exceeds the file size limit.");
     }
     public static DeviceSnapshot ParseSnapshot(string json, string groupId)
     {
@@ -99,7 +113,8 @@ public static class ObservationRules
     public static string CanonicalSnapshot(DeviceSnapshot snapshot) => JsonSerializer.Serialize(snapshot with
     {
         Observations = snapshot.Observations.OrderBy(o => o.SourceId, StringComparer.Ordinal).ThenBy(Identity, StringComparer.Ordinal).ToList(),
-        Visibility = snapshot.Visibility is null ? null : VisibilityRules.Merge(snapshot.Visibility).ToList()
+        Visibility = snapshot.Visibility is null ? null : VisibilityRules.Merge(snapshot.Visibility).ToList(),
+        ProgressObservations = snapshot.ProgressObservations is null ? null : ProgressRules.MergeSources(snapshot.ProgressObservations).ToList()
     }, JsonContract.Options);
     internal static void RejectDuplicateJsonProperties(string json)
     {

@@ -27,10 +27,50 @@ public sealed class SafeFileTests : IDisposable
         Directory.CreateDirectory(root); var path = Path.Combine(root, "locked.lua"); File.WriteAllText(path, "stable");
         using (var open = new FileStream(path, FileMode.Open, FileAccess.Write, FileShare.None))
         {
-            Assert.Throws<IOException>(() => SafeFiles.StableRead(path));
+            var failure = Assert.Throws<IOException>(() => SafeFiles.StableRead(path));
+            Assert.IsAssignableFrom<IOException>(failure.InnerException);
+            Assert.Contains(failure.InnerException!.Message, failure.Message);
         }
         // The next scan must recover once the writer releases its lock.
         Assert.Equal("stable", SafeFiles.StableRead(path));
+    }
+    [Theory]
+    [InlineData(0x00001000)] // Offline
+    [InlineData(0x00040000)] // RecallOnOpen
+    [InlineData(0x00400000)] // RecallOnDataAccess
+    [InlineData(0x00401420)] // Offline cloud placeholder with ordinary attributes
+    public void NonresidentFlagsProduceAnActionableTypedFailure(int attributes)
+    {
+        var path = Path.Combine(root, "peer.json");
+        var failure = Assert.Throws<CloudFileNotLocalException>(() => SafeFiles.EnsureLocallyAvailable(path, (FileAttributes)attributes));
+        Assert.Equal(path, failure.FilePath); Assert.Contains("always available", failure.Message); Assert.Null(failure.InnerException);
+    }
+    [Theory]
+    [InlineData(0x00000080)] // Normal
+    [InlineData(0x00080420)] // Pinned cloud reparse point
+    [InlineData(0x00100420)] // Locally available, but not pinned
+    public void ResidentCloudAttributesDoNotRequireHydration(int attributes) =>
+        SafeFiles.EnsureLocallyAvailable(Path.Combine(root, "peer.json"), (FileAttributes)attributes);
+    [Fact]
+    public void OfflineFileIsNotReadOrWrappedAndRecoversWhenAvailable()
+    {
+        Directory.CreateDirectory(root); var path = Path.Combine(root, "peer.json"); File.WriteAllText(path, "resident content");
+        var original = File.GetAttributes(path);
+        File.SetAttributes(path, original | FileAttributes.Offline);
+        try
+        {
+            var failure = Assert.Throws<CloudFileNotLocalException>(() => SafeFiles.StableRead(path));
+            Assert.Equal(path, failure.FilePath); Assert.Null(failure.InnerException);
+        }
+        finally { File.SetAttributes(path, original); }
+        Assert.Equal("resident content", SafeFiles.StableRead(path));
+    }
+    [Fact]
+    public void MissingFileIsAReadFailureWithItsOriginalCause()
+    {
+        var failure = Assert.Throws<IOException>(() => SafeFiles.StableRead(Path.Combine(root, "missing.json")));
+        Assert.IsType<FileNotFoundException>(failure.InnerException);
+        Assert.Contains(failure.InnerException!.Message, failure.Message);
     }
     public void Dispose()
     {

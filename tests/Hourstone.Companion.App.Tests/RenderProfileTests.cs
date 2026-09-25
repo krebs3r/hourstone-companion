@@ -36,7 +36,20 @@ public sealed class RenderProfileTests
         Assert.False(profile.Selected);
     }
 
+    [Fact]
+    public void CloudFileDiagnosticsUseAnExplicitSyntheticScenario()
+    {
+        var profile = RenderProfile.Parse(["--diagnostics-state", "cloud-file-not-local"]);
+        Assert.Equal("cloud-file-not-local", profile.DiagnosticsState);
+        Assert.Null(profile.SyncState);
+        Assert.Null(profile.ClientsState);
+        Assert.False(profile.Selected);
+    }
+
     [Theory]
+    [InlineData("--progress-details")]
+    [InlineData("--store-state", "unknown")]
+    [InlineData("--store-state", "found", "--selected")]
     [InlineData("--clients-state")]
     [InlineData("--clients-state", "--english")]
     [InlineData("--clients-state", "ready")]
@@ -49,6 +62,11 @@ public sealed class RenderProfileTests
     [InlineData("--sync-state", "online")]
     [InlineData("--sync-state", "connected", "--selected")]
     [InlineData("--sync-state", "connected", "--clients-state", "empty")]
+    [InlineData("--diagnostics-state")]
+    [InlineData("--diagnostics-state", "invalid")]
+    [InlineData("--diagnostics-state", "cloud-file-not-local", "--sync-state", "connected")]
+    [InlineData("--diagnostics-state", "cloud-file-not-local", "--clients-state", "empty")]
+    [InlineData("--diagnostics-state", "cloud-file-not-local", "--selected")]
     public void InvalidProfilesFailInsteadOfSavingAnUnrelatedScreenshot(params string[] arguments) =>
         Assert.Throws<ArgumentException>(() => RenderProfile.Parse(arguments));
 }

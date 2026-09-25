@@ -17,15 +17,28 @@ public static class Program
     [STAThread]
     public static int Main(string[] args)
     {
-        VelopackApp.Build().SetAutoApplyOnStartup(false).Run();
         bool render = args.Contains("--render"), demo = render || args.Contains("--demo");
         bool renderFailed = false;
-        using var mutex = new Mutex(true, "Local\\HourstoneCompanion" + (demo ? ".Preview" : ""), out bool first);
-        if (!first && !render) { if (demo || args.Contains("--background")) return 0; for (int attempt = 0; attempt < 50; attempt++) { if (EventWaitHandle.TryOpenExisting("Local\\HourstoneCompanion.Show", out var signal)) { using (signal) signal.Set(); return 0; } Thread.Sleep(100); } return 0; }
         try
         {
+            AppRuntime.Initialize(args);
+            AppDistribution.Current.InitializeDirectDistribution();
+            if (!AppRuntime.OwnsInstance && !AppDistribution.Current.IsStore)
+            { if (!AppRuntime.StartInBackground) AppRuntime.SignalExistingWindow(); return 0; }
             var app = new App(); app.InitializeComponent();
             var window = new MainWindow(demo, render); app.MainWindow = window;
+            if (AppRuntime.IsSmokeTest)
+            {
+                window.Loaded += async (_, _) =>
+                {
+                    var initialized = await window.RunStartupSmokeAsync();
+                    var database = Path.Combine(UserSettings.DataDirectory, "companion.sqlite");
+                    var report = Path.Combine(UserSettings.DataDirectory, "smoke-result.json");
+                    var passed = initialized && window.IsVisible && File.Exists(database);
+                    File.WriteAllText(report, JsonSerializer.Serialize(new { passed, distribution = AppDistribution.Current.Kind.ToString(), dataDirectory = UserSettings.DataDirectory, databaseCreated = File.Exists(database), windowVisible = window.IsVisible, dispatcherRunning = true }));
+                    renderFailed = !passed; window.Quit();
+                };
+            }
             if (render)
             {
                 string Option(string flag, string fallback) { var index = Array.IndexOf(args, flag); return index >= 0 && index + 1 < args.Length ? args[index + 1] : fallback; }
@@ -60,10 +73,11 @@ public static class Program
 
                 }, DispatcherPriority.ApplicationIdle);
             }
-            if (!args.Contains("--background") || demo) window.Show();
+            if (!AppRuntime.StartInBackground || demo || !AppRuntime.OwnsInstance || (AppDistribution.Current.IsStore && StoreImportService.RequiresSetup)) window.Show();
             var exitCode = app.Run();
             return renderFailed ? 1 : exitCode;
         }
         catch (Exception ex) { Console.Error.WriteLine(ex); if (!demo) MessageBox.Show("Hourstone Companion konnte nicht starten. Prüfe die lokalen App-Daten und Dateiberechtigungen. / Could not start. Check local app data and file permissions.", "Hourstone Companion", MessageBoxButton.OK, MessageBoxImage.Error); return 1; }
+        finally { AppRuntime.Release(); }
     }
 }

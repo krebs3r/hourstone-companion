@@ -6,6 +6,7 @@ namespace Hourstone.Companion.Core;
 public static class AddonReadiness
 {
     public const string MinimumAddonVersion = "0.2.2";
+    public const string ProgressAddonVersion = "0.3.2";
     public const int MaximumTocBytes = 64 * 1024;
     public static LocalSourceStatus Inspect(SourceConfiguration source)
     {
@@ -21,17 +22,21 @@ public static class AddonReadiness
             };
             var text = SafeFiles.StableRead(source.AddonTocPath, MaximumTocBytes);
             string? detected = null;
+            var capabilities = new List<string>();
             foreach (var line in text.Split('\n'))
             {
                 var metadata = line.Trim();
                 if (!metadata.StartsWith("##", StringComparison.Ordinal)) continue;
                 metadata = metadata[2..].TrimStart(); var colon = metadata.IndexOf(':');
+                if (colon >= 0 && metadata[..colon].Trim().Equals("X-Hourstone-Sync-Protocol", StringComparison.OrdinalIgnoreCase))
+                    capabilities.Add(metadata[(colon + 1)..].Trim());
                 if (colon < 0 || !metadata[..colon].Trim().Equals("Version", StringComparison.OrdinalIgnoreCase)) continue;
                 if (detected is not null) throw new InvalidDataException("Duplicate addon Version metadata.");
                 detected = metadata[(colon + 1)..].Trim();
                 if (detected.Length > 128 || detected.Any(char.IsControl)) throw new InvalidDataException("Invalid addon Version metadata.");
             }
-            status = status with { DetectedAddonVersion = string.IsNullOrEmpty(detected) ? null : detected };
+            status = status with { DetectedAddonVersion = string.IsNullOrEmpty(detected) ? null : detected,
+                SyncFormatVersion = capabilities.Count == 1 && capabilities[0] == "4" ? 4 : 3 };
             var numeric = detected?.TrimStart('v', 'V');
             var supported = Version.TryParse(numeric, out var version) && version >= Version.Parse(MinimumAddonVersion);
             if (!supported) return status with
