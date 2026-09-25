@@ -4,6 +4,12 @@ using System.Text.RegularExpressions;
 
 namespace Hourstone.Companion.Core;
 
+public sealed class CloudFileNotLocalException(string filePath) : IOException(
+    "Cloud file is not stored locally. Mark the HourstoneSync folder as always available on this device.")
+{
+    public string FilePath { get; } = filePath;
+}
+
 public static class SafeFiles
 {
     public static string StableRead(string path, int maximumBytes = SavedVariablesReader.MaximumFileBytes)
@@ -14,9 +20,9 @@ public static class SafeFiles
             try
             {
                 var before = new FileInfo(path); before.Refresh();
-                if (!before.Exists || before.Length > maximumBytes) throw new InvalidDataException("File missing or exceeds size limit.");
-                const FileAttributes notResident = FileAttributes.Offline | (FileAttributes)0x00400000 | (FileAttributes)0x00040000;
-                if ((before.Attributes & notResident) != 0) throw new IOException("Cloud file is not stored locally. Mark the HourstoneSync folder as always available on this device.");
+                if (!before.Exists) throw new FileNotFoundException("File is unavailable.", path);
+                if (before.Length > maximumBytes) throw new InvalidDataException("File exceeds size limit.");
+                EnsureLocallyAvailable(path, before.Attributes);
                 var length = before.Length; var changedAt = before.LastWriteTimeUtc;
                 byte[] bytes;
                 using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
@@ -30,9 +36,14 @@ public static class SafeFiles
                 if (before.Length != length || before.LastWriteTimeUtc != changedAt) throw new IOException("File changed during read.");
                 return new UTF8Encoding(false, true).GetString(bytes).TrimStart('\uFEFF');
             }
-            catch (IOException ex) { failure = ex; if (attempt < 2) Thread.Sleep(40); }
+            catch (IOException ex) when (ex is not CloudFileNotLocalException) { failure = ex; if (attempt < 2) Thread.Sleep(40); }
         }
-        throw new IOException("Could not read a stable file.", failure);
+        throw new IOException("Could not read a stable file: " + failure?.Message, failure);
+    }
+    internal static void EnsureLocallyAvailable(string path, FileAttributes attributes)
+    {
+        const FileAttributes notResident = FileAttributes.Offline | (FileAttributes)0x00400000 | (FileAttributes)0x00040000;
+        if ((attributes & notResident) != 0) throw new CloudFileNotLocalException(path);
     }
     public static bool IsWithin(string candidate, string parent)
     {

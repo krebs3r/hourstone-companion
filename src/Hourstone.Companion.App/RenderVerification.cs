@@ -10,7 +10,7 @@ using System.Windows.Media;
 namespace Hourstone.Companion.App;
 
 /// <summary>Synthetic render options; never opens a source, provider folder or browser.</summary>
-public sealed record RenderProfile(string? ClientsState, bool Selected, int SelectionColumn, bool SelectionUnfocused, string? SyncState = null, bool FooterFocused = false)
+public sealed record RenderProfile(string? ClientsState, bool Selected, int SelectionColumn, bool SelectionUnfocused, string? SyncState = null, bool FooterFocused = false, string? DiagnosticsState = null, string? CaptionFocus = null, string? StoreState = null, bool ProgressDetails = false)
 {
     public static RenderProfile Parse(string[] arguments)
     {
@@ -27,6 +27,12 @@ public sealed record RenderProfile(string? ClientsState, bool Selected, int Sele
         var syncState = Value("--sync-state");
         if (syncState is not (null or "disconnected" or "connected" or "paused" or "error" or "unchanged"))
             throw new ArgumentException("Unknown synchronization preview state.");
+        var diagnosticsState = Value("--diagnostics-state");
+        if (diagnosticsState is not (null or "cloud-file-not-local"))
+            throw new ArgumentException("Unknown diagnostics preview state.");
+        var captionFocus = Value("--caption-focus");
+        if (captionFocus is not (null or "minimize" or "maximize" or "close"))
+            throw new ArgumentException("Unknown caption button preview.");
         var selected = arguments.Contains("--selected") || arguments.Contains("--removed");
         var columnValue = Value("--selection-column");
         var column = 0;
@@ -37,7 +43,19 @@ public sealed record RenderProfile(string? ClientsState, bool Selected, int Sele
         if (state is not null && selected) throw new ArgumentException("Client setup and character selection require separate previews.");
         if (syncState is not null && (state is not null || selected))
             throw new ArgumentException("Synchronization, client setup and character selection require separate previews.");
-        return new(state, selected, column, unfocused, syncState, arguments.Contains("--footer-focus"));
+        if (diagnosticsState is not null && (syncState is not null || state is not null || selected))
+            throw new ArgumentException("Diagnostics, synchronization, client setup and character selection require separate previews.");
+        var footerFocused = arguments.Contains("--footer-focus");
+        if (captionFocus is not null && (selected || footerFocused))
+            throw new ArgumentException("Caption and other focus checks require separate previews.");
+        var storeState = Value("--store-state");
+        if (storeState is not (null or "settings" or "found" or "blocked" or "prepare" or "fresh" or "running" or "error" or "done"))
+            throw new ArgumentException("Unknown Store preview state.");
+        var progressDetails = arguments.Contains("--progress-details");
+        if (progressDetails && Value("--page") != "progress") throw new ArgumentException("Progress details require the progress page.");
+        if (storeState is not null && (progressDetails || selected || state is not null || syncState is not null || diagnosticsState is not null))
+            throw new ArgumentException("Store previews require a separate view.");
+        return new(state, selected, column, unfocused, syncState, footerFocused, diagnosticsState, captionFocus, storeState, progressDetails);
     }
 }
 
@@ -48,10 +66,19 @@ public static class RenderVerification
     {
         if (profile.ClientsState is not null) window.SetClientsPreview(profile.ClientsState);
         if (profile.SyncState is not null) window.SetSyncPreview(profile.SyncState);
-        if (Named<FrameworkElement>(window, "SettingsPage").IsVisible)
+        if (profile.DiagnosticsState is not null) window.SetDiagnosticsPreview(profile.DiagnosticsState);
+        if (profile.StoreState is not null) window.SetStorePreview(profile.StoreState);
+        if (profile.ProgressDetails)
+        {
+            var progress = ((MainViewModel)window.DataContext).Progress;
+            progress.Selected = progress.Rows.FirstOrDefault(row => row.Dungeons.Any(slot => slot.Known && !slot.IsStale && slot.Symbol == "✓"));
+        }
+        if (profile.DiagnosticsState is not null)
         {
             var diagnostics = Named<TextBox>(window, "DiagnosticsText");
-            diagnostics.Text = SourceStatusPresentation.Diagnostics(Hourstone.Companion.Core.SyncResult.Empty, [], window.English);
+            if (profile.DiagnosticsState is null)
+                diagnostics.Text = SourceStatusPresentation.Diagnostics(Hourstone.Companion.Core.SyncResult.Empty, [], window.English);
+            window.ChromeRoot.UpdateLayout();
             diagnostics.BringIntoView();
         }
         if (profile.Selected)
@@ -70,6 +97,7 @@ public static class RenderVerification
             }
         }
         if (profile.FooterFocused) Named<Button>(window, "FooterGitHubButton").Focus();
+        if (profile.CaptionFocus is not null) CaptionButton(window, profile.CaptionFocus).Focus();
     }
 
     public static IReadOnlyList<string> Verify(MainWindow window, RenderProfile profile)
@@ -84,12 +112,38 @@ public static class RenderVerification
         }
         Require(Named<Border>(window, "SidebarBorder").BorderThickness == new Thickness(0), "Sidebar still draws a separator.");
         checks.Add("sidebar-without-separator");
+        if (profile.CaptionFocus is not null)
+        {
+            var button = CaptionButton(window, profile.CaptionFocus);
+            Require(button.IsKeyboardFocused, "Caption focus preview did not acquire focus.");
+            Require(button.Focusable && button.IsTabStop && button.FocusVisualStyle is not null,
+                "Caption buttons must retain keyboard navigation and a keyboard-only focus style.");
+            Require(Descendants<Border>(button).All(border => border.BorderThickness == new Thickness(0) ||
+                border.BorderBrush is null || border.BorderBrush is SolidColorBrush { Color.A: 0 }),
+                "Caption button retains a border after ordinary focus, as from a mouse click.");
+            VisibleBounds(window, button);
+            checks.Add("caption-mouse-focus-without-border");
+        }
         Require(Named<TextBox>(window, "DiagnosticsText").FontFamily.Source == "Consolas", "Diagnostics must use Consolas.");
         checks.Add("diagnostics-monospace");
-        if (Named<FrameworkElement>(window, "SettingsPage").IsVisible)
+        if (profile.DiagnosticsState is not null)
         {
             VisibleBounds(window, Named<TextBox>(window, "DiagnosticsText"));
             checks.Add("diagnostics-visible-and-unclipped");
+        }
+        if (profile.DiagnosticsState is not null)
+        {
+            Require(Named<FrameworkElement>(window, "SyncPage").IsVisible, "Diagnostics preview is on the wrong page.");
+            var diagnostics = Named<TextBox>(window, "DiagnosticsText");
+            var notice = Named<TextBlock>(window, "NoticeText");
+            var instruction = window.English ? "Always keep on this device" : "Immer auf diesem Gerät behalten";
+            Require(diagnostics.Text.Contains("cloud_file_not_local", StringComparison.Ordinal) &&
+                diagnostics.Text.Contains(@"C:\Synthetic Proton Drive\HourstoneSync\device-", StringComparison.Ordinal) &&
+                diagnostics.Text.Contains(instruction, StringComparison.Ordinal), "Cloud diagnostics must identify the file and offline action.");
+            Require(notice.Text.Contains(instruction, StringComparison.Ordinal), "Cloud banner must identify the offline action.");
+            VisibleBounds(window, notice);
+            Require(!Named<Button>(window, "NoticeSourceButton").IsVisible, "Cloud-only notice must not offer a local account action.");
+            checks.Add("cloud-file-diagnostic-and-offline-action-visible");
         }
 
         var characterGrid = Named<DataGrid>(window, "CharacterGrid");
@@ -144,6 +198,48 @@ public static class RenderVerification
             checks.Add("footer-focus-color-only");
         }
         checks.Add("footer-visible-and-unclipped");
+        var mainModel = (MainViewModel)window.DataContext;
+        if (Named<FrameworkElement>(window, "OverviewPage").IsVisible)
+        {
+            Require(Named<FrameworkElement>(window, "RetailProgressView").IsVisible == mainModel.ShowProgress
+                && Named<FrameworkElement>(window, "PlaytimePage").IsVisible != mainModel.ShowProgress,
+                "Overview tabs must show exactly the selected view.");
+            foreach (var name in new[] { "PlaytimeTabButton", "ProgressTabButton" })
+            {
+                var label = Descendants<TextBlock>(Named<RadioButton>(window, name)).First();
+                Require(label.ActualHeight >= label.FontSize, "Overview tab label is vertically clipped.");
+                VisibleBounds(window, label);
+            }
+            checks.Add("overview-selected-tab-only");
+        }
+        if (mainModel.ShowProgress && Named<FrameworkElement>(window, "OverviewPage").IsVisible)
+        {
+            var view = Named<ProgressView>(window, "RetailProgressView");
+            var progressGrid = (DataGrid)view.FindName("ProgressGrid");
+            Require(mainModel.Progress.Rows.All(row => row.Character.Flavor == "retail"), "Progress contains a non-Retail character.");
+            Require(Descendants<ComboBox>(view).Count() == 1, "Progress must only have the Realm filter.");
+            Require(Descendants<TextBlock>(view).All(label => label.Text is not ("Abgeglichen" or "Synced")), "Progress must not claim synchronization.");
+            Require(progressGrid.Columns.Count == 6, "Progress table requires character, keystone, weekly best and three vault families.");
+            Require(mainModel.Progress.Rows.All(row => row.Dungeons.Count + row.Raids.Count + row.World.Count == 9), "Every Retail character needs nine slots.");
+            VisibleBounds(window, (FrameworkElement)view.FindName("ProgressSearchInput"));
+            VisibleBounds(window, (FrameworkElement)view.FindName("ProgressRealmChoice"));
+            if (profile.ProgressDetails) Require(mainModel.Progress.Selected is not null, "Progress details were not opened.");
+            checks.Add("progress-retail-only-nine-slots-and-filters");
+        }
+        if (profile.StoreState is not null)
+        {
+            if (profile.StoreState == "settings")
+            {
+                Require(Named<FrameworkElement>(window, "StoreUpdatesCard").IsVisible && !Named<FrameworkElement>(window, "DirectUpdatesCard").IsVisible, "Store settings expose the wrong update channel.");
+                VisibleBounds(window, Named<Button>(window, "StoreOpenButton"));
+            }
+            else
+            {
+                Require(Named<FrameworkElement>(window, "StoreSetupPage").IsVisible, "Store setup preview is missing.");
+                Require(!Named<FrameworkElement>(window, "OverviewPage").IsVisible && !Named<RadioButton>(window, "OverviewNav").IsEnabled, "Store setup permits navigation into an uninitialized profile.");
+            }
+            checks.Add("store-" + profile.StoreState + "-channel-and-setup-gate");
+        }
 
         if (profile.Selected)
         {
@@ -285,6 +381,12 @@ public static class RenderVerification
             model.ShowRemoved = showRemoved;
         }
     }
+
+    private static Button CaptionButton(MainWindow window, string name) => Named<Button>(window, name switch
+    {
+        "minimize" => "MinimizeButton", "maximize" => "MaximizeButton", "close" => "CloseButton",
+        _ => throw new ArgumentException("Unknown caption button.", nameof(name))
+    });
 
     private static T Named<T>(MainWindow window, string name) where T : FrameworkElement =>
         window.FindName(name) as T ?? throw new InvalidOperationException("Missing render verification element: " + name);

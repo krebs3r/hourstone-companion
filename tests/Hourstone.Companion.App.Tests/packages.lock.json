@@ -1,7 +1,7 @@
 {
   "version": 1,
   "dependencies": {
-    "net10.0-windows7.0": {
+    "net10.0-windows10.0.19041": {
       "Microsoft.NET.Test.Sdk": {
         "type": "Direct",
         "requested": "[18.10.0, )",
@@ -140,7 +140,7 @@
       "Hourstone.Companion": {
         "type": "Project",
         "dependencies": {
-          "Hourstone.Companion.Core": "[0.1.0, )",
+          "Hourstone.Companion.Core": "[0.1.7, )",
           "Velopack": "[1.2.0, )"
         }
       },
@@ -151,7 +151,7 @@
         }
       }
     },
-    "net10.0-windows7.0/win-x64": {
+    "net10.0-windows10.0.19041/win-x64": {
       "SQLitePCLRaw.lib.e_sqlite3": {
         "type": "Transitive",
         "resolved": "2.1.12",

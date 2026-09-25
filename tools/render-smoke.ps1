@@ -3,7 +3,7 @@ param([string]$Executable, [string]$OutputDirectory, [double[]]$Scales = @(1, 1.
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-if (-not $Executable) { $Executable = Join-Path $repoRoot 'src/Hourstone.Companion.App/bin/Release/net10.0-windows/Hourstone.Companion.exe' }
+if (-not $Executable) { $Executable = Join-Path $repoRoot 'src/Hourstone.Companion.App/bin/Release/net10.0-windows10.0.19041.0/Hourstone.Companion.exe' }
 if (-not $OutputDirectory) { $OutputDirectory = Join-Path $repoRoot 'artifacts/renders' }
 $Executable = [IO.Path]::GetFullPath($Executable)
 $OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
@@ -35,6 +35,8 @@ function Invoke-RenderCase([string]$Name, [string]$Theme, [double]$Scale, [int]$
     if ($clientStateIndex -ge 0 -and $report.checks -notcontains ('clients-' + $ExtraArguments[$clientStateIndex + 1] + '-links-visible')) { throw "Client link verification did not run: $Name" }
     $syncStateIndex = [Array]::IndexOf($ExtraArguments, '--sync-state')
     if ($syncStateIndex -ge 0 -and $report.checks -notcontains ('sync-' + $ExtraArguments[$syncStateIndex + 1] + '-explanations-accessible')) { throw "Synchronization explanation verification did not run: $Name" }
+    if ($ExtraArguments -contains '--diagnostics-state' -and $report.checks -notcontains 'cloud-file-diagnostic-and-offline-action-visible') { throw "Cloud availability diagnostic verification did not run: $Name" }
+    if ($ExtraArguments -contains '--caption-focus' -and $report.checks -notcontains 'caption-mouse-focus-without-border') { throw "Caption focus verification did not run: $Name" }
     Write-Output "PASS render $Name ($($report.checks.Count) layout checks)"
 }
 foreach ($theme in $Themes) {
@@ -42,7 +44,22 @@ foreach ($theme in $Themes) {
         Invoke-RenderCase -Name "$theme-$($scale.ToString([Globalization.CultureInfo]::InvariantCulture))" -Theme $theme -Scale $scale
     }
 }
+foreach ($theme in $Themes) {
+    Invoke-RenderCase -Name "progress-$theme" -Theme $theme -Scale 1 -ExtraArguments @('--page', 'progress')
+    Invoke-RenderCase -Name "progress-details-$theme" -Theme $theme -Scale 1 -ExtraArguments @('--page', 'progress', '--progress-details')
+    Invoke-RenderCase -Name "store-settings-$theme" -Theme $theme -Scale 1 -ExtraArguments @('--store-state', 'settings')
+    Invoke-RenderCase -Name "store-import-$theme" -Theme $theme -Scale 1 -ExtraArguments @('--store-state', 'found')
+}
 if ($Extended) {
+    foreach ($theme in @('dark', 'light', 'system')) {
+        foreach ($scale in @(1, 1.5, 2)) {
+            Invoke-RenderCase -Name "progress-$theme-$scale" -Theme $theme -Scale $scale -ExtraArguments @('--page', 'progress', '--progress-details', '--english')
+        }
+        Invoke-RenderCase -Name "progress-compact-$theme" -Theme $theme -Scale 1 -Width 960 -Height 600 -ExtraArguments @('--page', 'progress', '--english')
+        foreach ($stage in @('blocked', 'prepare', 'fresh', 'error', 'done')) {
+            Invoke-RenderCase -Name "store-$stage-$theme" -Theme $theme -Scale 1 -Width 1100 -Height 760 -ExtraArguments @('--store-state', $stage, '--english')
+        }
+    }
     foreach ($scale in @(1, 1.5, 2)) {
         Invoke-RenderCase -Name "system-$scale" -Theme system -Scale $scale
         foreach ($theme in @('dark', 'light', 'system')) {
@@ -58,6 +75,11 @@ if ($Extended) {
         Invoke-RenderCase -Name "compact-$theme" -Theme $theme -Scale 1 -Width 960 -Height 600
         Invoke-RenderCase -Name "long-names-$theme" -Theme $theme -Scale 1 -Width 1100 -Height 760 -ExtraArguments @('--long-names', '--english')
         Invoke-RenderCase -Name "settings-draft-$theme" -Theme $theme -Scale 1 -Width 960 -Height 600 -ExtraArguments @('--page', 'settings', '--settings-draft')
+        Invoke-RenderCase -Name "cloud-diagnostics-$theme" -Theme $theme -Scale 1 -ExtraArguments @('--diagnostics-state', 'cloud-file-not-local')
+        Invoke-RenderCase -Name "cloud-diagnostics-compact-$theme" -Theme $theme -Scale 1 -Width 960 -Height 600 -ExtraArguments @('--diagnostics-state', 'cloud-file-not-local', '--english')
+        foreach ($caption in @('minimize', 'maximize', 'close')) {
+            Invoke-RenderCase -Name "caption-$caption-$theme" -Theme $theme -Scale 1 -ExtraArguments @('--caption-focus', $caption)
+        }
     }
 }
 

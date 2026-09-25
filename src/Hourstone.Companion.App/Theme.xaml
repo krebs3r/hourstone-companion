@@ -86,6 +86,16 @@
   <SolidColorBrush x:Key="CaptionHover" Color="#1AFFFFFF" />
   <SolidColorBrush x:Key="CaptionPressed" Color="#0FFFFFFF" />
   <SolidColorBrush x:Key="Error" Color="#F17D72" />
+  <!-- WPF shows FocusVisualStyle only for keyboard navigation, not after a mouse click. -->
+  <Style x:Key="CaptionKeyboardFocus" TargetType="Control">
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Control">
+          <Border BorderThickness="1" BorderBrush="{DynamicResource Cyan}" Margin="4" IsHitTestVisible="False" />
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
   <Style x:Key="CaptionButton" TargetType="Button">
     <Setter Property="Width" Value="46" />
     <Setter Property="Height" Value="44" />
@@ -96,13 +106,12 @@
     <Setter Property="FontFamily" Value="Segoe Fluent Icons" />
     <Setter Property="FontSize" Value="10" />
     <Setter Property="Cursor" Value="Arrow" />
-    <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    <Setter Property="FocusVisualStyle" Value="{StaticResource CaptionKeyboardFocus}" />
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="Button">
           <Grid Background="Transparent">
             <Border x:Name="CaptionBackground" Background="{TemplateBinding Background}" />
-            <Border x:Name="CaptionFocus" BorderThickness="1" BorderBrush="Transparent" Margin="4" />
             <TextBlock Text="{TemplateBinding Content}" FontFamily="{TemplateBinding FontFamily}" FontSize="{TemplateBinding FontSize}" Foreground="{TemplateBinding Foreground}" HorizontalAlignment="Center" VerticalAlignment="Center" TextTrimming="None" />
           </Grid>
           <ControlTemplate.Triggers>
@@ -132,9 +141,6 @@
               <Setter TargetName="CaptionBackground" Property="Background" Value="#A4262C" />
               <Setter Property="Foreground" Value="White" />
             </MultiTrigger>
-            <Trigger Property="IsKeyboardFocused" Value="True">
-              <Setter TargetName="CaptionFocus" Property="BorderBrush" Value="{DynamicResource Cyan}" />
-            </Trigger>
             <Trigger Property="IsEnabled" Value="False">
               <Setter Property="Foreground" Value="{DynamicResource Muted}" />
             </Trigger>

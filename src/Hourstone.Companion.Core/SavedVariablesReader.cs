@@ -4,7 +4,7 @@ using System.Text;
 namespace Hourstone.Companion.Core;
 
 /// <summary>A bounded parser for WoW's literal SavedVariables format. Never executes Lua.</summary>
-public static class SavedVariablesReader
+public static partial class SavedVariablesReader
 {
     public const int MaximumFileBytes = 8 * 1024 * 1024;
     public static ParsedSavedVariables Read(string text, SourceConfiguration source)
@@ -62,7 +62,9 @@ public static class SavedVariablesReader
             ObservationRules.Validate(observation);
             result.Add(observation);
         }
-        return new ParsedSavedVariables((int)version, sourceId.Length > 0 ? sourceId : null, ObservationRules.Merge(result)) { Visibility = visibility };
+        var progress = ReadProgress(root.GetValueOrDefault("progress"), source, effectiveId);
+        return new ParsedSavedVariables((int)version, sourceId.Length > 0 ? sourceId : null, ObservationRules.Merge(result))
+        { Visibility = visibility, ProgressObservations = progress.Values, ProgressStatus = progress.Status, ProgressIssues = progress.Issues };
     }
 
     private static IReadOnlyList<CharacterVisibility> ReadVisibility(object? value)
@@ -251,4 +253,7 @@ public static class SavedVariablesReader
 public sealed record ParsedSavedVariables(int SchemaVersion, string? SourceId, IReadOnlyList<Observation> Observations)
 {
     public IReadOnlyList<CharacterVisibility> Visibility { get; init; } = [];
+    public IReadOnlyList<ProgressObservation> ProgressObservations { get; init; } = [];
+    public ProgressReadStatus ProgressStatus { get; init; }
+    public IReadOnlyList<string> ProgressIssues { get; init; } = [];
 }

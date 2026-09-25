@@ -8,7 +8,8 @@ public sealed record UserSettings
     public string Theme { get; init; } = "dark";
     public string Language { get; init; } = "de";
     public bool Autostart { get; init; } = true;
-    public static string DataDirectory => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Hourstone", "Companion");
+    public static string LegacyDataDirectory => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Hourstone", "Companion");
+    public static string DataDirectory => AppDistribution.Current.DataDirectory;
     public static UserSettings Load() => Load(DataDirectory);
     public static UserSettings Load(string directory)
     {

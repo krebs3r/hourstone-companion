@@ -53,5 +53,6 @@ jobs:
             artifacts/package-renders/*.png
             artifacts/portable-renders/*.png
             artifacts/test-results/*.trx
+            artifacts/portable-smoke/startup-test-profile/smoke-result.json
             artifacts/releases/release-manifest.json
           if-no-files-found: ignore

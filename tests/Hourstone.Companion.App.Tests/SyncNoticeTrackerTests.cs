@@ -28,4 +28,15 @@ public sealed class SyncNoticeTrackerTests
         Assert.False(tracker.Update([]));
         Assert.True(tracker.Update([issue]));
     }
+    [Fact]
+    public void ChangingOnlyTheAffectedFileAnnouncesTheNewProblem()
+    {
+        var tracker = new SyncNoticeTracker();
+        var issue = new SyncIssue("cloud_file_not_local", "File is not locally available.") { FilePath = @"C:\Cloud\device-a.json" };
+        Assert.True(tracker.Update([issue]));
+        Assert.False(tracker.Update([issue]));
+        Assert.True(tracker.Update([issue with { FilePath = @"C:\Cloud\device-b.json" }]));
+        Assert.False(tracker.Update([]));
+        Assert.True(tracker.Update([issue]));
+    }
 }

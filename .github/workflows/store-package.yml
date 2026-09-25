@@ -1,0 +1,64 @@
+name: Prepare Microsoft Store package
+on:
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: 'LocalTest is a separate identity; Store requires reserved Partner Center identity variables.'
+        type: choice
+        options: [LocalTest, Store]
+        default: LocalTest
+        required: true
+permissions:
+  contents: read
+jobs:
+  package:
+    runs-on: windows-2025
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@d4c94342e560b34958eacfc5d055d21461ed1c5d
+        with:
+          global-json-file: global.json
+      - uses: actions/setup-python@e797f83bcb11b83ae66e0230d6156d7c80228e7c
+        with:
+          python-version: '3.12'
+      - name: Validate source, protocol and tests
+        run: |
+          python tools/privacy_guard.py
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python tools/check_protocol.py
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          python tools/verify_assets.py
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          dotnet restore Hourstone.Companion.slnx --locked-mode
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          dotnet test Hourstone.Companion.slnx -c Release --no-restore
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+      - name: Build separate local-test package
+        if: inputs.profile == 'LocalTest'
+        run: ./tools/package-msix.ps1 -Profile LocalTest -SignLocalTest
+      - name: Prepare production package without submitting
+        if: inputs.profile == 'Store'
+        env:
+          STORE_PACKAGE_NAME: ${{ vars.STORE_PACKAGE_NAME }}
+          STORE_PUBLISHER: ${{ vars.STORE_PUBLISHER }}
+          STORE_PUBLISHER_DISPLAY_NAME: ${{ vars.STORE_PUBLISHER_DISPLAY_NAME }}
+          STORE_PRODUCT_ID: ${{ vars.STORE_PRODUCT_ID }}
+          STORE_PACKAGE_VERSION: ${{ vars.STORE_PACKAGE_VERSION }}
+        run: |
+          $identityFile = Join-Path $env:RUNNER_TEMP 'hourstone-store-identity.json'
+          @{ name = $env:STORE_PACKAGE_NAME; publisher = $env:STORE_PUBLISHER; publisherDisplayName = $env:STORE_PUBLISHER_DISPLAY_NAME; storeProductId = $env:STORE_PRODUCT_ID; packageVersion = $env:STORE_PACKAGE_VERSION } | ConvertTo-Json | Set-Content -LiteralPath $identityFile -Encoding utf8NoBOM
+          ./tools/package-msix.ps1 -Profile Store -IdentityPath $identityFile
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: hourstone-msix-${{ inputs.profile }}
+          path: |
+            artifacts/msix/**/*.msix
+            artifacts/msix/**/SHA256SUMS
+            artifacts/msix/**/package-validation.json
+            artifacts/msix/**/LocalTest.cer
+          if-no-files-found: error

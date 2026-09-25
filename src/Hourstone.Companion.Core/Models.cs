@@ -31,6 +31,7 @@ public sealed record DeviceSnapshot
     [JsonRequired] public long Revision { get; init; }
     [JsonRequired] public List<Observation> Observations { get; init; } = [];
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public List<CharacterVisibility>? Visibility { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] public List<ProgressObservation>? ProgressObservations { get; init; }
 }
 
 public sealed record CharacterVisibility
@@ -83,8 +84,14 @@ public sealed record CompanionConfiguration
 public sealed record DeviceStatus(string DeviceId, string DeviceName, long Revision, int CharacterCount, DateTimeOffset LastSeen, bool IsLocal);
 public enum LocalSourceReadiness { AddonMissing, AddonOutdated, AwaitingGameSave, Ready, ReadFailed }
 public sealed record LocalSourceStatus(string SourceId, string ClientDirectory, string AccountName, string Flavor,
-    LocalSourceReadiness Readiness, string? DetectedAddonVersion, string? Message = null);
-public sealed record SyncIssue(string Code, string Message, string? SourceId = null);
+    LocalSourceReadiness Readiness, string? DetectedAddonVersion, string? Message = null)
+{
+    public int SyncFormatVersion { get; init; } = 3;
+}
+public sealed record SyncIssue(string Code, string Message, string? SourceId = null)
+{
+    public string? FilePath { get; init; }
+}
 public sealed record SyncResult(DateTimeOffset CompletedAt, int CharacterCount, int SourceCount, int DeviceCount, IReadOnlyList<SyncIssue> Issues)
 {
     public IReadOnlyList<LocalSourceStatus> LocalSourceStatuses { get; init; } = [];

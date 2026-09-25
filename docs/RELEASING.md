@@ -25,7 +25,7 @@ manual Release workflow with `allowUnsigned: true`. Package validation, privacy
 checks and release-asset integrity checks still apply. Release notes must clearly
 state that the packages are unsigned and list material validation gaps.
 
-The 0.1.6 early release uses this unsigned path. Two-device provider testing remains
+The 0.2.0 early release uses this unsigned path. Two-device provider testing remains
 outstanding; it is not reported as passed. Configure release-environment protection
 rules when establishing the signed distribution process.
 

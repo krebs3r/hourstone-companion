@@ -29,8 +29,10 @@ public static class ProductLinks
     };
 
     public static BrowserLaunchResult Open(ProductLink link, Action<ProcessStartInfo>? launch = null)
+        => OpenAddress(Address(link), launch);
+    public static BrowserLaunchResult OpenAddress(string address, Action<ProcessStartInfo>? launch = null)
     {
-        var start = new ProcessStartInfo(Address(link)) { UseShellExecute = true, Verb = "open" };
+        var start = new ProcessStartInfo(address) { UseShellExecute = true, Verb = "open" };
         try
         {
             if (launch is not null) launch(start);

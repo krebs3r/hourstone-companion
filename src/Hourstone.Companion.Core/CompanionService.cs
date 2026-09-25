@@ -13,6 +13,8 @@ public sealed class CompanionService : IDisposable
     private IReadOnlyList<Observation> characters = [];
     private IReadOnlyList<Observation> allCharacters = [];
     private IReadOnlyList<Observation> removedCharacters = [];
+    private IReadOnlyList<ProgressObservation> progress = [];
+    private IReadOnlyList<ProgressObservation> rawProgress = [];
     private IReadOnlyList<DeviceStatus> devices = [];
     private SyncResult lastResult = SyncResult.Empty;
     private bool disposed;
@@ -24,8 +26,8 @@ public sealed class CompanionService : IDisposable
         configuration = json is null ? new CompanionConfiguration
         { DeviceId = Guid.NewGuid().ToString("D"), DeviceName = CleanDeviceName(deviceName ?? Environment.MachineName) }
             : JsonSerializer.Deserialize<CompanionConfiguration>(json, JsonContract.Options) ?? throw new InvalidDataException("Invalid local configuration.");
-        ValidateConfiguration(configuration); PersistConfiguration();
-        RefreshViews();
+        try { ValidateConfiguration(configuration); PersistConfiguration(); RefreshViews(); }
+        catch { store.Dispose(); throw; }
     }
     public CompanionConfiguration GetConfiguration() { lock (gate) return configuration with { Sources = [.. configuration.Sources] }; }
     public void SaveConfiguration(CompanionConfiguration value)
@@ -44,6 +46,8 @@ public sealed class CompanionService : IDisposable
     public IReadOnlyList<DeviceStatus> GetDevices() { lock (gate) return devices.ToArray(); }
     public IReadOnlyList<Observation> GetCharacters() { lock (gate) return characters.ToArray(); }
     public IReadOnlyList<Observation> GetRemovedCharacters() { lock (gate) return removedCharacters.ToArray(); }
+    /// <summary>Display projection, including hidden characters; never used as a local contribution.</summary>
+    public IReadOnlyList<ProgressObservation> GetProgress() { lock (gate) return progress.ToArray(); }
     public void SetCharacterRemoved(Observation observation, bool removed)
     {
         lock (gate)
@@ -144,9 +148,29 @@ public sealed class CompanionService : IDisposable
                     }
                     // Metadata diagnoses do not discard or block otherwise valid saved observations.
                     var merged = VisibilityRules.Merge(store.ReadVisibility().Concat(parsed.Visibility));
+                    foreach (var message in parsed.ProgressIssues)
+                        issues.Add(new SyncIssue(parsed.ProgressStatus == ProgressReadStatus.Unsupported ? "progress_unsupported" : "progress_read_failed",
+                            $"{source.Flavor} / {source.AccountName}: Fortschrittsdaten konnten nicht vollständig gelesen werden; gültige Daten bleiben erhalten: {message}", effective.SourceId));
+                    var localIdentities = parsed.Observations.Select(ObservationRules.Identity).ToHashSet(StringComparer.Ordinal);
+                    var nextProgress = ProgressRules.MergeSources(store.ReadSourceProgress(effective.SourceId).Concat(parsed.ProgressObservations))
+                        .Where(item => localIdentities.Contains(ProgressRules.Identity(item))).ToList();
+                    var otherSources = nextConfiguration.Sources.Where(s => s.Enabled && s.SourceId != effective.SourceId).ToArray();
+                    var prospectiveOwn = otherSources.SelectMany(s => store.ReadSource(s.SourceId)).Concat(parsed.Observations).ToList();
+                    var prospectiveProgress = otherSources.SelectMany(s => store.ReadSourceProgress(s.SourceId)).Concat(nextProgress).ToList();
+                    var localGroup = nextConfiguration.GroupId ?? Guid.Empty.ToString("D");
+                    var peers = store.ReadSnapshots(localGroup).Where(s => s.Snapshot.DeviceId != configuration.DeviceId).ToArray();
+                    var combinedIdentities = prospectiveOwn.Concat(peers.SelectMany(s => s.Snapshot.Observations)).Select(ObservationRules.Identity).ToHashSet(StringComparer.Ordinal);
+                    var prospectiveSnapshot = new DeviceSnapshot
+                    {
+                        FormatVersion = 4, GroupId = localGroup, DeviceId = configuration.DeviceId, DeviceName = configuration.DeviceName,
+                        Revision = 1, Observations = prospectiveOwn, ProgressObservations = prospectiveProgress,
+                        Visibility = merged.Where(state => combinedIdentities.Contains(VisibilityRules.Identity(state))).ToList()
+                    };
+                    ObservationRules.ValidateSnapshot(prospectiveSnapshot, localGroup);
+                    ValidateCombinedData(peers.Select(s => s.Snapshot).Append(prospectiveSnapshot), merged, nextConfiguration.Sources.Where(s => s.Enabled));
                     store.Transaction(() =>
                     {
-                        store.WriteSource(effective.SourceId, parsed.Observations); store.WriteVisibility(merged);
+                        store.WriteSource(effective.SourceId, parsed.Observations); store.WriteSourceProgress(effective.SourceId, nextProgress); store.WriteVisibility(merged);
                         if (nextConfiguration != configuration) store.Set("configuration", JsonSerializer.Serialize(nextConfiguration, JsonContract.Options));
                     });
                     configuration = nextConfiguration; status = status with { SourceId = effective.SourceId };
@@ -162,20 +186,27 @@ public sealed class CompanionService : IDisposable
         }
         selected = configuration.Sources.Where(s => s.Enabled).ToArray(); store.RetainSources(selected.Select(s => s.SourceId));
         var own = selected.SelectMany(s => store.ReadSource(s.SourceId)).OrderBy(o => o.SourceId, StringComparer.Ordinal).ThenBy(ObservationRules.Identity, StringComparer.Ordinal).ToList();
+        var ownProgress = ProgressRules.MergeSources(selected.SelectMany(s => store.ReadSourceProgress(s.SourceId))).ToList();
         var groupId = configuration.GroupId ?? Guid.Empty.ToString("D");
-        var local = EnsureLocalSnapshot(own, groupId);
+        var local = EnsureLocalSnapshot(own, ownProgress, groupId);
         var canPublish = true; var cloudPublished = false;
         if (configuration.CloudFolder is not null && !configuration.CloudPaused)
         {
+            var readingGroup = true;
             try
             {
                 var group = ReadGroup(configuration.CloudFolder);
+                readingGroup = false;
                 if (group.GroupId != groupId) throw new InvalidDataException("The selected sync folder now belongs to a different group.");
                 canPublish = ReadCloudSnapshots(configuration.CloudFolder, local, issues, cancellationToken);
                 // Accepted control state is deliberately relayed in this cycle; received playtime never enters own.
-                local = EnsureLocalSnapshot(own, groupId);
+                local = EnsureLocalSnapshot(own, ownProgress, groupId);
                 if (canPublish) { SafeFiles.AtomicWriteOwned(configuration.CloudFolder, configuration.DeviceId + ".json", ObservationRules.CanonicalSnapshot(local)); cloudPublished = true; }
             }
+            catch (CloudFileNotLocalException ex)
+            { issues.Add(CloudFileNotLocalIssue(ex)); }
+            catch (Exception ex) when (readingGroup && (ex is IOException or UnauthorizedAccessException) && ex is not DirectoryNotFoundException)
+            { issues.Add(SnapshotReadIssue(ex, Path.Combine(configuration.CloudFolder, "group.json"))); }
             catch (Exception ex) when (IsRecoverable(ex))
             { issues.Add(new SyncIssue("cloud_unavailable", "Sync-Ordner nicht verfügbar; lokale Daten und zuletzt empfangene Geräte bleiben verfügbar: " + ex.Message)); }
         }
@@ -192,7 +223,11 @@ public sealed class CompanionService : IDisposable
                 var sources = selected.Where(s => StringComparer.OrdinalIgnoreCase.Equals(Path.GetFullPath(s.ClientDirectory), client)).Select(s => s.SourceId);
                 // Do not recreate an old installation that the user has removed.
                 if (!currentClients.Contains(client, StringComparer.OrdinalIgnoreCase) && !Directory.Exists(Path.Combine(client, "Interface", "AddOns", "Hourstone_Sync"))) continue;
-                DataAddonWriter.Write(client, sources, allCharacters, VisibilityFor(allCharacters));
+                var statuses = sourceStatuses.Where(s => StringComparer.OrdinalIgnoreCase.Equals(Path.GetFullPath(s.ClientDirectory), client)).ToArray();
+                var format = statuses.Length > 0 && statuses.All(s => s.SyncFormatVersion == 4) ? 4 : 3;
+                DataAddonWriter.Write(client, sources, allCharacters, VisibilityFor(allCharacters), rawProgress, format);
+                if (format == 3 && selected.Any(s => s.Flavor == "retail" && StringComparer.OrdinalIgnoreCase.Equals(Path.GetFullPath(s.ClientDirectory), client)) && rawProgress.Count > 0)
+                    issues.Add(new SyncIssue("progress_addon_update_required", $"Der Fortschritt ist im Companion verfügbar. Für den Rückimport nach WoW benötigt diese Installation Hourstone {AddonReadiness.ProgressAddonVersion} mit Sync-Protokoll 4."));
             }
             catch (Exception ex) when (IsRecoverable(ex)) { managedClients.Add(client); issues.Add(new SyncIssue("addon_write_failed", "Sync-Datenaddon konnte nicht aktualisiert werden: " + ex.Message)); }
         }
@@ -201,11 +236,12 @@ public sealed class CompanionService : IDisposable
         { LocalSourceStatuses = sourceStatuses, CloudPublished = cloudPublished, AddonReady = selected.Length > 0 && sourceStatuses.All(source => source.Readiness == LocalSourceReadiness.Ready) && !issues.Any(issue => issue.Code == "addon_write_failed") };
         return lastResult;
     }
-    private DeviceSnapshot EnsureLocalSnapshot(List<Observation> own, string groupId)
+    private DeviceSnapshot EnsureLocalSnapshot(List<Observation> own, List<ProgressObservation> ownProgress, string groupId)
     {
         var current = store.ReadSnapshots(groupId).SingleOrDefault(s => s.Snapshot.DeviceId == configuration.DeviceId)?.Snapshot;
         var remote = store.ReadSnapshots(groupId).Where(item => item.Snapshot.DeviceId != configuration.DeviceId).SelectMany(item => item.Snapshot.Observations);
-        var candidate = new DeviceSnapshot { GroupId = groupId, DeviceId = configuration.DeviceId, DeviceName = configuration.DeviceName, Revision = current?.Revision ?? 1, Observations = own, Visibility = VisibilityFor(own.Concat(remote)).ToList() };
+        var candidate = new DeviceSnapshot { FormatVersion = 4, GroupId = groupId, DeviceId = configuration.DeviceId, DeviceName = configuration.DeviceName, Revision = current?.Revision ?? 1,
+            Observations = own, Visibility = VisibilityFor(own.Concat(remote)).ToList(), ProgressObservations = ownProgress };
         ObservationRules.ValidateSnapshot(candidate, groupId);
         if (current is not null && ObservationRules.CanonicalSnapshot(candidate) == ObservationRules.CanonicalSnapshot(current)) return current;
         var lastRevision = long.TryParse(store.Get("revision"), out var prior) ? prior : 0;
@@ -218,37 +254,50 @@ public sealed class CompanionService : IDisposable
     {
         var paths = Directory.EnumerateFiles(folder, "*.json", SearchOption.TopDirectoryOnly).Take(513).ToArray();
         if (paths.Length > 512) throw new InvalidDataException("Too many files in sync folder.");
-        var received = new List<(DeviceSnapshot Snapshot, string Hash)>(); var publish = true; long totalBytes = 0;
+        var received = new List<(DeviceSnapshot Snapshot, string Hash, string Path)>(); var publish = true; long totalBytes = 0;
         foreach (var path in paths)
         {
-            cancellationToken.ThrowIfCancellationRequested(); totalBytes += new FileInfo(path).Length; if (totalBytes > 64L * 1024 * 1024) throw new InvalidDataException("Sync folder exceeds the total snapshot size limit."); if (Path.GetFileName(path).Equals("group.json", StringComparison.OrdinalIgnoreCase)) continue;
+            cancellationToken.ThrowIfCancellationRequested();
+            var ownFile = Path.GetFileName(path).Equals(configuration.DeviceId + ".json", StringComparison.OrdinalIgnoreCase);
+            long length;
+            try { length = new FileInfo(path).Length; }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                issues.Add(SnapshotReadIssue(ex, path));
+                if (Path.GetFileName(path).StartsWith("group", StringComparison.OrdinalIgnoreCase)) return false;
+                if (ownFile) publish = false;
+                continue;
+            }
+            totalBytes += length;
+            if (totalBytes > 64L * 1024 * 1024) throw new InvalidDataException("Sync folder exceeds the total snapshot size limit.");
+            if (Path.GetFileName(path).Equals("group.json", StringComparison.OrdinalIgnoreCase)) continue;
             if (Path.GetFileName(path).StartsWith("group", StringComparison.OrdinalIgnoreCase))
             {
                 try
                 {
                     var metadata = ParseGroup(SafeFiles.StableRead(path, 64 * 1024));
-                    if (metadata.GroupId != local.GroupId) { issues.Add(new SyncIssue("group_conflict", "Der Cloud-Ordner enthält widersprüchliche Gruppendateien. Synchronisierung bleibt angehalten.")); return false; }
+                    if (metadata.GroupId != local.GroupId) { issues.Add(new SyncIssue("group_conflict", "Der Cloud-Ordner enthält widersprüchliche Gruppendateien. Synchronisierung bleibt angehalten.") { FilePath = path }); return false; }
                     continue;
                 }
-                catch (Exception ex) when (IsRecoverable(ex)) { issues.Add(new SyncIssue("group_conflict", "Ungültige Konfliktkopie der Sync-Gruppe: " + ex.Message)); return false; }
+                catch (Exception ex) when (IsRecoverable(ex)) { issues.Add(SnapshotReadIssue(ex, path, groupConflict: true)); return false; }
             }
             try
             {
                 var snapshot = ObservationRules.ParseSnapshot(SafeFiles.StableRead(path), local.GroupId);
-                if (Path.GetFileName(path).Equals(configuration.DeviceId + ".json", StringComparison.OrdinalIgnoreCase) && snapshot.DeviceId != configuration.DeviceId)
+                if (ownFile && snapshot.DeviceId != configuration.DeviceId)
                 {
-                    publish = false; issues.Add(new SyncIssue("device_file_conflict", "Die Datei dieses Geräts enthält die Identität eines anderen Geräts und wird nicht überschrieben.")); continue;
+                    publish = false; issues.Add(new SyncIssue("device_file_conflict", "Die Datei dieses Geräts enthält die Identität eines anderen Geräts und wird nicht überschrieben.") { FilePath = path }); continue;
                 }
-                received.Add((snapshot, SafeFiles.Sha256(ObservationRules.CanonicalSnapshot(snapshot))));
+                received.Add((snapshot, SafeFiles.Sha256(ObservationRules.CanonicalSnapshot(snapshot)), path));
             }
             catch (Exception ex) when (IsRecoverable(ex))
             {
-                issues.Add(new SyncIssue("snapshot_rejected", "Ungültiger oder unbekannter Geräte-Snapshot wurde nicht übernommen: " + ex.Message));
-                if (Path.GetFileName(path).Equals(configuration.DeviceId + ".json", StringComparison.OrdinalIgnoreCase)) publish = false;
+                issues.Add(SnapshotReadIssue(ex, path));
+                if (ownFile) publish = false;
             }
         }
         var existing = store.ReadSnapshots(local.GroupId).ToDictionary(s => s.Snapshot.DeviceId, StringComparer.Ordinal);
-        var accepted = new List<(DeviceSnapshot Snapshot, string Hash)>();
+        var accepted = new List<(DeviceSnapshot Snapshot, string Hash, string Path)>();
         foreach (var device in received.GroupBy(s => s.Snapshot.DeviceId, StringComparer.Ordinal))
         {
             var conflict = device.GroupBy(s => s.Snapshot.Revision).Any(revision => revision.Select(s => s.Hash).Distinct(StringComparer.Ordinal).Count() > 1);
@@ -270,15 +319,21 @@ public sealed class CompanionService : IDisposable
             if (cached is null || newest.Snapshot.Revision > cached.Snapshot.Revision) accepted.Add(newest);
         }
         // Validate each cumulative addition before committing; one excessive peer must not block unrelated devices.
-        var merged = store.ReadVisibility(); var validated = new List<(DeviceSnapshot Snapshot, string Hash)>();
+        var merged = store.ReadVisibility(); var validated = new List<(DeviceSnapshot Snapshot, string Hash, string Path)>();
+        var prospective = existing.ToDictionary(pair => pair.Key, pair => pair.Value.Snapshot, StringComparer.Ordinal);
+        prospective[local.DeviceId] = local;
         foreach (var item in accepted.OrderBy(item => item.Snapshot.DeviceId, StringComparer.Ordinal))
         {
             try
             {
-                merged = VisibilityRules.Merge(merged.Concat(item.Snapshot.Visibility ?? [])); validated.Add(item);
+                var nextVisibility = VisibilityRules.Merge(merged.Concat(item.Snapshot.Visibility ?? []));
+                ValidateCombinedData(prospective.Where(pair => pair.Key != item.Snapshot.DeviceId).Select(pair => pair.Value).Append(item.Snapshot),
+                    nextVisibility, configuration.Sources.Where(source => source.Enabled));
+                prospective[item.Snapshot.DeviceId] = item.Snapshot;
+                merged = nextVisibility; validated.Add(item);
             }
             catch (InvalidDataException ex)
-            { issues.Add(new SyncIssue("snapshot_rejected", "Geräte-Snapshot überschreitet die gemeinsamen Steuerzustandsgrenzen und wurde nicht übernommen: " + ex.Message)); }
+            { issues.Add(new SyncIssue("snapshot_rejected", "Snapshot exceeds combined state limits: " + ex.Message) { FilePath = item.Path }); }
         }
         store.Transaction(() =>
         {
@@ -287,6 +342,16 @@ public sealed class CompanionService : IDisposable
         });
         return publish;
     }
+    private static SyncIssue CloudFileNotLocalIssue(CloudFileNotLocalException exception) => new("cloud_file_not_local",
+        "Die Cloud-Datei ist auf diesem PC noch nicht vollständig lokal verfügbar. Markiere den gesamten HourstoneSync-Ordner auf beiden PCs als dauerhaft lokal verfügbar; der Companion versucht das Lesen erneut. Gültige Daten bleiben erhalten.")
+        { FilePath = exception.FilePath };
+    private static SyncIssue SnapshotReadIssue(Exception exception, string path, bool groupConflict = false) => exception switch
+    {
+        CloudFileNotLocalException unavailable => CloudFileNotLocalIssue(unavailable),
+        IOException or UnauthorizedAccessException => new("snapshot_read_failed", exception.Message) { FilePath = path },
+        _ when groupConflict => new("group_conflict", "Ungültige Konfliktkopie der Sync-Gruppe: " + exception.Message) { FilePath = path },
+        _ => new("snapshot_rejected", exception.Message) { FilePath = path }
+    };
     private void RefreshViews()
     {
         var selected = configuration.Sources.Where(s => s.Enabled).ToList(); var own = selected.SelectMany(s => store.ReadSource(s.SourceId)).ToList();
@@ -296,6 +361,10 @@ public sealed class CompanionService : IDisposable
         store.WriteVisibility(visibility);
         var hidden = visibility.Where(VisibilityRules.IsRemoved).Select(VisibilityRules.Identity).ToHashSet(StringComparer.Ordinal);
         allCharacters = ObservationRules.Merge(own.Concat(remote.SelectMany(s => s.Snapshot.Observations)));
+        var identities = allCharacters.Select(ObservationRules.Identity).ToHashSet(StringComparer.Ordinal);
+        rawProgress = ProgressRules.MergeSources(selected.SelectMany(s => store.ReadSourceProgress(s.SourceId))
+            .Concat(remote.SelectMany(s => s.Snapshot.ProgressObservations ?? []))).Where(item => identities.Contains(ProgressRules.Identity(item))).ToArray();
+        progress = ProgressRules.Project(rawProgress);
         characters = allCharacters.Where(item => !hidden.Contains(ObservationRules.Identity(item))).ToArray();
         removedCharacters = allCharacters.Where(item => hidden.Contains(ObservationRules.Identity(item))).ToArray();
         var localRevision = long.TryParse(store.Get("revision"), out var revision) ? revision : 0;
@@ -306,6 +375,21 @@ public sealed class CompanionService : IDisposable
     {
         var known = observations.Select(ObservationRules.Identity).ToHashSet(StringComparer.Ordinal);
         return store.ReadVisibility().Where(state => known.Contains(VisibilityRules.Identity(state))).ToArray();
+    }
+    private static void ValidateCombinedData(IEnumerable<DeviceSnapshot> snapshots, IEnumerable<CharacterVisibility> controls, IEnumerable<SourceConfiguration> sources)
+    {
+        var values = snapshots.ToArray();
+        var observations = ObservationRules.Merge(values.SelectMany(snapshot => snapshot.Observations));
+        var identities = observations.Select(ObservationRules.Identity).ToHashSet(StringComparer.Ordinal);
+        // Validate the unfiltered union so unrelated progress cannot silently evade aggregate limits.
+        var raw = ProgressRules.MergeSources(values.SelectMany(snapshot => snapshot.ProgressObservations ?? []));
+        var visibleScope = controls.Where(state => identities.Contains(VisibilityRules.Identity(state))).ToArray();
+        var scopedProgress = raw.Where(item => identities.Contains(ProgressRules.Identity(item))).ToArray();
+        foreach (var client in sources.GroupBy(source => Path.GetFullPath(source.ClientDirectory), StringComparer.OrdinalIgnoreCase))
+        {
+            var format = AddonReadiness.Inspect(client.First()).SyncFormatVersion;
+            _ = DataAddonWriter.BuildData(client.Select(source => source.SourceId), observations, visibleScope, scopedProgress, format);
+        }
     }
     private void PersistConfiguration() => store.Set("configuration", JsonSerializer.Serialize(configuration, JsonContract.Options));
     private static void ValidateConfiguration(CompanionConfiguration value)

@@ -12,12 +12,13 @@ internal sealed class CompanionStore : IDisposable
         Directory.CreateDirectory(Path.GetDirectoryName(fullPath)!);
         connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = fullPath, Mode = SqliteOpenMode.ReadWriteCreate }.ToString());
         connection.Open();
-        if (Convert.ToInt32(Scalar("PRAGMA user_version;")) > 1) { connection.Dispose(); throw new InvalidDataException("This Companion database was created by a newer version."); }
+        if (Convert.ToInt32(Scalar("PRAGMA user_version;")) > 2) { connection.Dispose(); throw new InvalidDataException("This Companion database was created by a newer version."); }
         Execute("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON; PRAGMA busy_timeout=5000;");
-        Execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL); CREATE TABLE IF NOT EXISTS sources (source_id TEXT PRIMARY KEY, json TEXT NOT NULL); CREATE TABLE IF NOT EXISTS snapshots (group_id TEXT NOT NULL, device_id TEXT NOT NULL, revision INTEGER NOT NULL, hash TEXT NOT NULL, json TEXT NOT NULL, last_seen TEXT NOT NULL, PRIMARY KEY(group_id,device_id));");
-        var version = Scalar("PRAGMA user_version;");
-        if (Convert.ToInt32(version) > 1) throw new InvalidDataException("This Companion database was created by a newer version.");
-        Execute("PRAGMA user_version=1;");
+        Transaction(() =>
+        {
+            Execute("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL); CREATE TABLE IF NOT EXISTS sources (source_id TEXT PRIMARY KEY, json TEXT NOT NULL); CREATE TABLE IF NOT EXISTS snapshots (group_id TEXT NOT NULL, device_id TEXT NOT NULL, revision INTEGER NOT NULL, hash TEXT NOT NULL, json TEXT NOT NULL, last_seen TEXT NOT NULL, PRIMARY KEY(group_id,device_id));");
+            Execute("CREATE TABLE IF NOT EXISTS source_progress (source_id TEXT PRIMARY KEY, json TEXT NOT NULL); PRAGMA user_version=2;");
+        });
     }
     public string? Get(string key) => Scalar("SELECT value FROM settings WHERE key=$key", ("$key", key)) as string;
     public void Set(string key, string value) => Execute("INSERT INTO settings(key,value) VALUES($key,$value) ON CONFLICT(key) DO UPDATE SET value=excluded.value", ("$key", key), ("$value", value));
@@ -27,6 +28,14 @@ internal sealed class CompanionStore : IDisposable
         return json is null ? [] : JsonSerializer.Deserialize<List<Observation>>(json, JsonContract.Options) ?? [];
     }
     public void WriteSource(string sourceId, IReadOnlyList<Observation> values) => Execute("INSERT INTO sources(source_id,json) VALUES($id,$json) ON CONFLICT(source_id) DO UPDATE SET json=excluded.json", ("$id", sourceId), ("$json", JsonSerializer.Serialize(values, JsonContract.Options)));
+    public IReadOnlyList<ProgressObservation> ReadSourceProgress(string sourceId)
+    {
+        var json = Scalar("SELECT json FROM source_progress WHERE source_id=$id", ("$id", sourceId)) as string;
+        return json is null ? [] : ProgressRules.MergeSources(JsonSerializer.Deserialize<List<ProgressObservation>>(json, JsonContract.Options)
+            ?? throw new InvalidDataException("Invalid local progress cache."));
+    }
+    public void WriteSourceProgress(string sourceId, IEnumerable<ProgressObservation> values) => Execute("INSERT INTO source_progress(source_id,json) VALUES($id,$json) ON CONFLICT(source_id) DO UPDATE SET json=excluded.json",
+        ("$id", sourceId), ("$json", JsonSerializer.Serialize(ProgressRules.MergeSources(values), JsonContract.Options)));
     public IReadOnlyList<CharacterVisibility> ReadVisibility()
     {
         var json = Get("visibility");
@@ -39,10 +48,14 @@ internal sealed class CompanionStore : IDisposable
         var keep = sourceIds.ToHashSet(StringComparer.Ordinal); var obsolete = new List<string>();
         using (var command = connection.CreateCommand())
         {
-            command.CommandText = "SELECT source_id FROM sources"; using var reader = command.ExecuteReader();
+            command.CommandText = "SELECT source_id FROM sources UNION SELECT source_id FROM source_progress"; using var reader = command.ExecuteReader();
             while (reader.Read()) if (!keep.Contains(reader.GetString(0))) obsolete.Add(reader.GetString(0));
         }
-        foreach (var source in obsolete) Execute("DELETE FROM sources WHERE source_id=$id", ("$id", source));
+        foreach (var source in obsolete)
+        {
+            Execute("DELETE FROM sources WHERE source_id=$id", ("$id", source));
+            Execute("DELETE FROM source_progress WHERE source_id=$id", ("$id", source));
+        }
     }
     public IReadOnlyList<CachedSnapshot> ReadSnapshots(string groupId)
     {

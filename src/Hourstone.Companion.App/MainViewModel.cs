@@ -58,13 +58,13 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ["AccountSources"] = ("Gespeicherte Account-Quellen", "Saved account sources"),
         ["BrowserOpenFailed"] = ("Der Standardbrowser konnte nicht geöffnet werden. Öffne diesen Link in deinem Browser: {0}", "Your default browser could not be opened. Open this link in your browser: {0}"),
         ["FirstSave"] = ("Hourstone 0.2.2 oder neuer muss einmal im jeweiligen Client geladen und durch Ausloggen oder /reload gespeichert werden. Originaldateien bleiben unter der Kontrolle von WoW.", "Load Hourstone 0.2.2 or later in each client, then log out or /reload once. WoW remains in control of its original files."),
-        ["SyncIntro"] = ("Hourstone speichert Austauschdateien in einem Ordner auf deinem PC. Dropbox, OneDrive oder ein anderer Synchronisierungsdienst überträgt diesen Ordner auf deine weiteren Geräte. Dort übernimmt der Companion die Daten automatisch.", "Hourstone saves exchange files in a folder on your PC. Dropbox, OneDrive or another sync service transfers this folder to your other devices. The Companion on each device then picks up the data automatically."),
+        ["SyncIntro"] = ("Hourstone speichert Austauschdateien in einem Ordner auf deinem PC. Dropbox, OneDrive, Proton Drive oder ein anderer Synchronisierungsdienst überträgt diesen Ordner auf deine weiteren Geräte. Dort übernimmt der Companion die Daten automatisch.", "Hourstone saves exchange files in a folder on your PC. Dropbox, OneDrive, Proton Drive or another sync service transfers this folder to your other devices. The Companion on each device then picks up the data automatically."),
         ["Folder"] = ("Gemeinsamer Syncordner", "Shared sync folder"),
         ["ChooseFolder"] = ("Ordner auswählen", "Choose folder"),
         ["Pause"] = ("Pausieren", "Pause"),
         ["Resume"] = ("Fortsetzen", "Resume"),
         ["Detach"] = ("Verbindung trennen", "Disconnect"),
-        ["OfflineFolder"] = ("Dropbox: „Offline verfügbar machen“. OneDrive: „Immer auf diesem Gerät behalten“. Eine Datei in diesem Ordner bestätigt noch nicht, dass ein anderer PC sie empfangen hat.", "Dropbox: Make available offline. OneDrive: Always keep on this device. A file saved in this folder does not confirm that another PC has received it."),
+        ["OfflineFolder"] = ("Dropbox: „Offline verfügbar machen“. OneDrive und Proton Drive: „Immer auf diesem Gerät behalten“. Wähle diese Einstellung für den gesamten Sync-Ordner auf beiden PCs. Eine Datei in diesem Ordner bestätigt noch nicht, dass ein anderer PC sie empfangen hat.", "Dropbox: Make available offline. OneDrive and Proton Drive: Always keep on this device. Apply this setting to the entire sync folder on both PCs. A file saved in this folder does not confirm that another PC has received it."),
         ["Devices"] = ("Bekannte Geräte", "Known devices"),
         ["DeviceName"] = ("Gerätename", "Device name"),
         ["Appearance"] = ("Darstellung", "Appearance"),
@@ -86,6 +86,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ["UpdateInfo"] = ("Hourstone Companion sucht beim Start und danach täglich auf GitHub nach einer neuen veröffentlichten App-Version und lädt sie automatisch herunter. Nach einem Hinweis wird das Update installiert, sobald WoW geschlossen ist und du das App-Fenster nicht mehr verwendest. Ungespeicherte Einstellungen verhindern den Neustart. Anschließend startet die App im Hintergrund neu.", "Hourstone Companion checks GitHub at startup and daily for a newly published app version and downloads it automatically. After a notice, the update installs once WoW is closed and you are no longer using the app window. Unsaved settings prevent the restart. The app then restarts in the background."),
         ["CheckUpdate"] = ("Nach App-Updates suchen", "Check for app updates"),
         ["Diagnostics"] = ("Lokale Diagnose", "Local diagnostics"),
+        ["Credits"] = ("Credits", "Credits"),
+        ["BlizzardCredit"] = ("World of Warcraft ist eine Marke oder eingetragene Marke von Blizzard Entertainment, Inc.\nSpiel-Icons: © Blizzard Entertainment, Inc.\nHourstone Companion ist ein unabhängiges Projekt ohne Verbindung zu oder Unterstützung durch Blizzard.", "World of Warcraft is a trademark or registered trademark of Blizzard Entertainment, Inc.\nGame icons: © Blizzard Entertainment, Inc.\nHourstone Companion is an independent project, unaffiliated with and not endorsed by Blizzard."),
         ["Footer"] = ("Neue Spielzeit wird nach dem Ausloggen oder einem /reload übernommen.", "New playtime is picked up after logout or /reload."),
         ["AllClients"] = ("Alle Clients", "All clients"),
         ["AllRealms"] = ("Alle Realms", "All realms"),
@@ -103,7 +105,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ["Now"] = ("gerade eben", "just now"),
         ["LastCheck"] = ("Letzter Abgleich", "Last sync check"),
         ["CheckTooltip"] = ("Liest gespeicherte Hourstone-Daten aller ausgewählten Accounts ein, gleicht verfügbare Daten anderer PCs ab und aktualisiert die gemeinsame Übersicht sowie die Daten für das WoW-Addon.", "Reads saved Hourstone data from every selected account, exchanges available data from other PCs, and updates the shared overview and the data for the WoW addon."),
-        ["CheckSaveHint"] = ("WoW muss neue Spielzeit zuerst durch Ausloggen oder /reload speichern. „Daten abgleichen“ erzwingt weder diesen Speichervorgang noch die Übertragung durch Dropbox oder OneDrive.", "WoW must save new playtime first through logout or /reload. Sync data does not force WoW to save or Dropbox or OneDrive to transfer files."),
+        ["CheckSaveHint"] = ("WoW muss neue Spielzeit zuerst durch Ausloggen oder /reload speichern. „Daten abgleichen“ erzwingt weder diesen Speichervorgang noch die Übertragung durch Dropbox, OneDrive oder Proton Drive.", "WoW must save new playtime first through logout or /reload. Sync data does not force WoW to save or Dropbox, OneDrive or Proton Drive to transfer files."),
         ["SyncStepFirst"] = ("Erster PC: Wähle einen Ordner, der bereits durch deinen Dienst synchronisiert wird. Der Companion erstellt darin den Unterordner HourstoneSync.", "First PC: Choose a folder that your service already synchronizes. The Companion creates the HourstoneSync subfolder inside it."),
         ["SyncStepOther"] = ("Weitere PCs: Warte, bis HourstoneSync vollständig angekommen ist. Wähle dann denselben synchronisierten Ordner oder direkt den Unterordner HourstoneSync aus.", "Other PCs: Wait until HourstoneSync has fully arrived. Then choose the same synchronized folder or the HourstoneSync subfolder itself."),
         ["SyncStepAvailability"] = ("Alle Geräte: Halte den Ordner dauerhaft lokal verfügbar. Companion und Synchronisierungsdienst müssen für den Austausch laufen.", "All devices: Keep the folder permanently available locally. The Companion and the sync service must be running to exchange data."),
@@ -129,8 +131,21 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public Dictionary<string, string> T => Strings.ToDictionary(x => x.Key, x => English ? x.Value.En : x.Value.De);
     public string Text(string key) => English ? Strings[key].En : Strings[key].De;
     public string DeviceName { get; set; } = Environment.MachineName;
+    public ProgressViewModel Progress { get; } = new();
+    bool showProgress;
+    public bool ShowProgress
+    {
+        get => showProgress;
+        set { if (showProgress == value) return; showProgress = value; Changed(); Changed(nameof(ShowPlaytime)); Changed(nameof(PlaytimeVisibility)); Changed(nameof(ProgressVisibility)); Changed(nameof(OverviewSubtitle)); }
+    }
+    public bool ShowPlaytime => !ShowProgress;
+    public Visibility PlaytimeVisibility => ShowProgress ? Visibility.Collapsed : Visibility.Visible;
+    public Visibility ProgressVisibility => ShowProgress ? Visibility.Visible : Visibility.Collapsed;
+    public string OverviewSubtitle => ShowProgress ? Progress.Subtitle : Text("Subtitle");
+    public string PlaytimeTab => English ? "Playtime" : "Spielzeit";
+    public string ProgressTab => English ? "Progress" : "Fortschritt";
     public bool IsLight { get; private set; }
-    public void SetLight(bool light) { IsLight = light; RefreshRows(); }
+    public void SetLight(bool light) { IsLight = light; RefreshRows(); Progress.SetAppearance(English, light); }
     public bool Demo { get; }
     public string BuildLabel => "v" + typeof(MainViewModel).Assembly.GetName().Version!.ToString(3);
     public string PreviewLabel => Demo ? (English ? "Preview · sample data" : "Vorschau · Beispieldaten") : "";
@@ -184,6 +199,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public MainViewModel(bool demo)
     {
         Demo = demo; SetObservations(demo ? DemoData() : []);
+        if (demo) Progress.SetProgress(ProgressViewModel.DemoProgress(VisibleObservations));
         Status = Text(demo ? "Active" : "Unconfigured");
         if (demo) RecordCheck(new DateTimeOffset(DateTime.Today.AddHours(14).AddMinutes(32)));
     }
@@ -191,6 +207,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     {
         var statusKey = Strings.FirstOrDefault(x => (English ? x.Value.En : x.Value.De) == Status).Key;
         English = english; Changed(nameof(T));
+        Progress.SetAppearance(english, IsLight); Changed(nameof(OverviewSubtitle)); Changed(nameof(PlaytimeTab)); Changed(nameof(ProgressTab));
         if (statusKey != null) Status = Text(statusKey);
         Changed(nameof(LastSync));
         SetObservations(observations.ToArray(), removedObservations.ToArray()); Changed(nameof(BuildLabel)); Changed(nameof(PreviewLabel));
@@ -200,6 +217,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public void SetObservations(IEnumerable<Observation> values, IEnumerable<Observation>? removedValues = null)
     {
         observations = values.ToList(); removedObservations = removedValues?.ToList() ?? [];
+        Progress.SetCharacters(observations);
         RebuildFilters();
         Changed(nameof(TotalTime)); Changed(nameof(TotalDays)); Changed(nameof(CharacterCount)); Changed(nameof(ClientCount));
         Changed(nameof(ListTitle)); Changed(nameof(ToggleRemovedLabel)); Changed(nameof(CharacterActionLabel));
