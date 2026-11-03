@@ -60,6 +60,15 @@ function Read-Release {
     if ($matches.Count -eq 1) { return $matches[0] }
     return $null
 }
+# GitHub lists a just-prepared draft and newly uploaded assets with a short delay.
+# Read again for a while instead of failing; the checks after each read stay unchanged.
+function Read-ReleaseUntil([scriptblock]$Ready) {
+    for ($attempt = 1; ; $attempt++) {
+        $release = Read-Release
+        if (($null -ne $release -and (& $Ready $release)) -or $attempt -ge 10) { return $release }
+        Start-Sleep -Seconds 3
+    }
+}
 function Assert-Draft($Release, [switch]$Empty) {
     if (-not $Release.draft) { throw 'An already published release must not be modified.' }
     if ($Empty -and @($Release.assets).Count -gt 0) { throw 'The existing draft is not empty; inspect it before retrying publication.' }
@@ -93,14 +102,14 @@ if ($null -eq $release) {
     # An empty draft may still refer to an earlier source-only preview.
     Invoke-GitHub @('release', 'edit', $Tag, '--repo', $repository, '--verify-tag', '--draft', '--target', $Commit, '--title', $title, '--notes-file', $notesPath) | Out-Null
 }
-$release = Read-Release
+$release = Read-ReleaseUntil { param($candidate) $candidate.target_commitish -eq $Commit }
 if ($null -eq $release) { throw 'The prepared draft release is missing.' }
 Assert-Draft $release -Empty
 if ($release.target_commitish -ne $Commit) { throw 'Draft target does not match the validated commit.' }
 $draftId = $release.id
 # No --clobber: a concurrent upload fails instead of replacing a release asset.
 Invoke-GitHub (@('release', 'upload', $Tag, '--repo', $repository) + $assets.ToArray()) | Out-Null
-$release = Read-Release
+$release = Read-ReleaseUntil { param($candidate) $candidate.id -ne $draftId -or @($candidate.assets).Count -ge $expectedSizes.Count }
 if ($null -eq $release -or $release.id -ne $draftId) { throw 'The draft changed during asset upload.' }
 Assert-Draft $release
 if ($release.target_commitish -ne $Commit -or @($release.assets).Count -ne $expectedSizes.Count) { throw 'Uploaded release does not match the validated package.' }
