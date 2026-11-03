@@ -56,9 +56,10 @@ public sealed class ProgressViewModel : INotifyPropertyChanged
     {
         english = isEnglish; light = isLight; RebuildRealms(); Changed(null);
     }
-    public void SetCharacters(IEnumerable<Observation> values)
+    /// <param name="forever">WoW: Forever shares the Retail family but has no keystones or Great Vault.</param>
+    public void SetCharacters(IEnumerable<Observation> values, IReadOnlySet<string>? forever = null)
     {
-        characters = values.Where(c => c.Flavor == "retail").ToList(); RebuildRealms();
+        characters = values.Where(c => c.Flavor == "retail" && forever?.Contains(ObservationRules.Identity(c)) != true).ToList(); RebuildRealms();
     }
     public void SetProgress(IEnumerable<ProgressObservation> values)
     {

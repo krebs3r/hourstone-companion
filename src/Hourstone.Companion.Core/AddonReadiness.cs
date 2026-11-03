@@ -12,7 +12,7 @@ public static class AddonReadiness
     {
         var status = new LocalSourceStatus(source.SourceId, source.ClientDirectory, source.AccountName,
             source.Flavor, LocalSourceReadiness.Ready, null);
-        var context = $"{source.Flavor} / {source.AccountName}: ";
+        var context = $"{source.ClientKey} / {source.AccountName}: ";
         try
         {
             if (!File.Exists(source.AddonTocPath)) return status with
@@ -53,5 +53,5 @@ public static class AddonReadiness
         }
     }
     internal static string AwaitingSaveMessage(SourceConfiguration source) =>
-        $"{source.Flavor} / {source.AccountName}: Lade Hourstone {MinimumAddonVersion} oder neuer in diesem WoW-Client und logge dich mit diesem Account ein. Logge dich danach aus oder führe /reload in WoW aus, damit die Quelldaten gespeichert werden. Ein Neustart des Companions ersetzt diesen Schritt nicht.";
+        $"{source.ClientKey} / {source.AccountName}: Lade Hourstone {MinimumAddonVersion} oder neuer in diesem WoW-Client und logge dich mit diesem Account ein. Logge dich danach aus oder führe /reload in WoW aus, damit die Quelldaten gespeichert werden. Ein Neustart des Companions ersetzt diesen Schritt nicht.";
 }

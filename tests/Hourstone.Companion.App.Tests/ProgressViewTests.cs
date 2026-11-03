@@ -32,6 +32,13 @@ public sealed class ProgressViewTests
         vm.SetCharacters([classic]); Assert.Empty(vm.Rows); Assert.Equal("Noch keine Retail-Charaktere vorhanden.", vm.EmptyMessage);
     }
     [Fact]
+    public void ForeverCharactersShareTheRetailFamilyButNeverEnterProgress()
+    {
+        var vm = new ProgressViewModel(() => Now); var retail = Character("Player-1-A", "Aria"); var forever = Character("Player-1-B", "Dara", realm: "Forever Realm");
+        vm.SetCharacters([retail, forever], new HashSet<string> { ObservationRules.Identity(forever) });
+        Assert.Equal("Aria", Assert.Single(vm.Rows).Name); Assert.DoesNotContain("Forever Realm", vm.Realms);
+    }
+    [Fact]
     public void MissingProgressIsNotAZeroAndHiddenCharactersCannotBeResurrectedByProgress()
     {
         var vm = new ProgressViewModel(() => Now);

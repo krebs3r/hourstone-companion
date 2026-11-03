@@ -157,6 +157,87 @@ public sealed class SourceReadinessTests : IDisposable
         var discovered = Assert.Single(service.DiscoverSources([source.WoWRoot]));
         Assert.Equal("tbc", discovered.Flavor); Assert.Equal("hs-anniversary", discovered.SourceId); Assert.Equal(source.ClientDirectory, discovered.ClientDirectory);
     }
+    [Fact]
+    public async Task ForeverClientKeepsTheRetailFamilyAndMarksOnlyItsOwnCharacters()
+    {
+        var service = Service(); var retail = Source(id: "hs-retail");
+        var forever = Source(id: "hs-forever") with { ClientDirectory = Path.Combine(root, "WoW", "_forever_") };
+        WriteToc(retail, "## Version: 0.3.4\n"); WriteToc(forever, "## Version: 0.3.4\n"); WriteSaved(retail);
+        Directory.CreateDirectory(Path.GetDirectoryName(forever.SavedVariablesPath)!);
+        File.WriteAllText(forever.SavedVariablesPath, Sample.Lua(forever, Sample.Item(forever.SourceId, 240, "Player-2-CD"), 3));
+        var discovered = service.DiscoverSources([retail.WoWRoot]);
+        var found = Assert.Single(discovered, s => s.ClientDirectory == forever.ClientDirectory);
+        Assert.Equal("retail", found.Flavor); Assert.Equal("hs-forever", found.SourceId); Assert.True(found.Configuration.IsForever);
+        Assert.False(Assert.Single(discovered, s => s.ClientDirectory == retail.ClientDirectory).Configuration.IsForever);
+        Select(service, retail, forever); Assert.True((await service.SyncNowAsync()).Success);
+        Assert.Equal(2, service.GetCharacters().Count);
+        Assert.Equal(ObservationRules.Identity(service.GetCharacters().Single(c => c.Guid == "Player-2-CD")), Assert.Single(service.GetForeverIdentities()));
+        Assert.Contains("## Interface: 120105, 50504, 20506, 11509, 16001\n", File.ReadAllText(Path.Combine(forever.DataAddonDirectory, "Hourstone_Sync.toc")));
+        // The marker is derived from the folder; nothing new is persisted or sent to peers.
+        var stored = System.Text.Json.JsonSerializer.Serialize(service.GetConfiguration(), JsonContract.Options);
+        Assert.DoesNotContain("isForever", stored); Assert.DoesNotContain("clientKey", stored);
+        Assert.All(service.GetConfiguration().Sources, source => Assert.Equal("retail", source.Flavor));
+        File.Delete(forever.AddonTocPath);
+        Assert.StartsWith("forever / TEST_ACCOUNT: ", AddonReadiness.Inspect(forever).Message);
+    }
+    [Fact]
+    public async Task CharactersOfAnUnknownClientAreReportedInsteadOfSilentlyDropped()
+    {
+        var service = Service(); var source = Source(id: "hs-beta") with { ClientDirectory = Path.Combine(root, "WoW", "_forever_") };
+        WriteToc(source, "## Version: 0.3.4\n"); Directory.CreateDirectory(Path.GetDirectoryName(source.SavedVariablesPath)!);
+        File.WriteAllText(source.SavedVariablesPath, """
+            HourstoneDB = { version=3, visibility={}, sourceId="hs-beta", characters = {
+              ["unknown:hs-beta:project-18:Player-1-AA"]={ guid="Player-1-AA", name="Beta", realm="ClassicBetaPvE", class="MAGE", flavor="project-18", region="unknown", level=60, seconds=600, updatedAt=1700000000 },
+              ["unknown:hs-beta:project-20:Player-1-BB"]={ guid="Player-1-BB", name="Beta", realm="ClassicBetaPvE", class="MAGE", flavor="project-20", region="unknown", level=60, seconds=600, updatedAt=1700000000 },
+              ["eu:era:Player-1-CC"]={ guid="Player-1-CC", name="Other", realm="Everlook", class="MAGE", flavor="era", region="eu", level=60, seconds=600, updatedAt=1700000000 },
+              ["eu:retail:Player-1-DD"]={ guid="Player-1-DD", name="Live", realm="Forever", class="MAGE", flavor="retail", region="eu", level=60, seconds=600, updatedAt=1700000000 }
+            } }
+            """);
+        Select(service, source); var result = await service.SyncNowAsync();
+        // Another supported family stays silently out of this source; unknown clients are counted and reported.
+        var issue = Assert.Single(result.Issues); Assert.Equal("unsupported_client_rows", issue.Code); Assert.Equal("hs-beta", issue.SourceId);
+        Assert.Contains("forever / TEST_ACCOUNT: 2 Charakter", issue.Message);
+        Assert.Equal("Live", Assert.Single(service.GetCharacters()).Name);
+        Assert.Equal(LocalSourceReadiness.Ready, Assert.Single(result.LocalSourceStatuses).Readiness); Assert.True(result.AddonReady);
+    }
+    [Theory]
+    [InlineData("_forever_", true)]
+    [InlineData("_FOREVER_", true)]
+    [InlineData("_forever_\\", true)]
+    [InlineData("_retail_", false)]
+    [InlineData("_classic_beta_", false)]
+    [InlineData("forever", false)]
+    public void ForeverIsRecognizedByItsClientFolderOnly(string clientName, bool expected) =>
+        Assert.Equal(expected, SourceDiscovery.IsForeverClient(Path.Combine(root, "WoW") + Path.DirectorySeparatorChar + clientName));
+    [Fact]
+    public void CopiedWtfFolderIsNotAddedAsASecondSource()
+    {
+        var service = Service(); var retail = Source(id: "hs-copied");
+        var copy = retail with { ClientDirectory = Path.Combine(root, "WoW", "_forever_") };
+        WriteSaved(retail); WriteSaved(copy);
+        var sources = new List<SourceConfiguration>();
+        var duplicate = Assert.Single(SourceDiscovery.AddDiscovered(sources, service.DiscoverSources([retail.WoWRoot])));
+        var added = Assert.Single(sources);
+        Assert.Equal(retail.ClientDirectory, added.ClientDirectory); Assert.Equal(copy.ClientDirectory, duplicate.Skipped.ClientDirectory); Assert.Equal(added, duplicate.Original);
+        Select(service, [.. sources]);
+        Assert.Single(SourceDiscovery.AddDiscovered(sources, service.DiscoverSources([retail.WoWRoot]))); Assert.Single(sources);
+        Assert.Throws<InvalidDataException>(() => Select(service, retail, copy));
+    }
+    [Fact]
+    public void RetailReplacesACopiedForeverSourceThatWasSelectedOnItsOwnBefore()
+    {
+        var service = Service(); var retail = Source(id: "hs-copied");
+        var copy = retail with { ClientDirectory = Path.Combine(root, "WoW", "_forever_") };
+        WriteSaved(retail); WriteSaved(copy);
+        var sources = new List<SourceConfiguration>();
+        Assert.Empty(SourceDiscovery.AddDiscovered(sources, service.DiscoverSources([copy.ClientDirectory])));
+        sources[0] = sources[0] with { Enabled = false }; Select(service, [.. sources]);
+        var duplicate = Assert.Single(SourceDiscovery.AddDiscovered(sources, service.DiscoverSources([retail.WoWRoot])));
+        var replacement = Assert.Single(sources);
+        Assert.Equal(retail.ClientDirectory, replacement.ClientDirectory); Assert.False(replacement.Enabled);
+        Assert.Equal(copy.ClientDirectory, duplicate.Skipped.ClientDirectory); Assert.Equal(replacement, duplicate.Original);
+        Select(service, [.. sources]); Assert.Empty(service.GetForeverIdentities());
+    }
     public void Dispose()
     {
         foreach (var service in services) service.Dispose(); Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();

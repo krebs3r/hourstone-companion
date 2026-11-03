@@ -88,6 +88,31 @@ public sealed class SyncIssuePresentationTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public void SkippedUnknownClientCharactersPointToClientsWithBothRemedies(bool english)
+    {
+        var result = Result(UnsupportedIssue) with { LocalSourceStatuses = [ReadyForever] };
+        var notice = SyncIssuePresentation.Notice(result, english);
+        Assert.NotNull(notice); Assert.Contains("Clients", notice); Assert.True(SyncIssuePresentation.OnlyUnsupportedClientRows(result));
+        var diagnostics = SourceStatusPresentation.Diagnostics(result, [], english);
+        Assert.Contains("WoW: Forever · LOCAL_ACCOUNT: " + SourceStatusPresentation.UnsupportedClientRows(english) + " [unsupported_client_rows]", diagnostics);
+        Assert.Contains("SavedVariables\\Hourstone.lua", diagnostics); Assert.Contains("/reload", diagnostics);
+    }
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void SkippedUnknownClientCharactersNeverHideAnotherFailure(bool english)
+    {
+        var result = Result(CloudIssue, UnsupportedIssue) with { LocalSourceStatuses = [ReadyForever] };
+        var notice = SyncIssuePresentation.Notice(result, english);
+        Assert.NotNull(notice); Assert.False(SyncIssuePresentation.OnlyUnsupportedClientRows(result));
+        Assert.Contains(english ? "Always keep on this device" : "Immer auf diesem Gerät behalten", notice);
+        Assert.Contains(SourceStatusPresentation.UnsupportedClientRows(english), SourceStatusPresentation.Diagnostics(result, [], english));
+    }
+    private static readonly SyncIssue UnsupportedIssue = new("unsupported_client_rows", "forever / LOCAL_ACCOUNT: 2 Charakter(e) eines nicht unterstützten Clients wurden nicht übernommen.", "local-account");
+    private static readonly LocalSourceStatus ReadyForever = new("local-account", @"C:\WoW\_forever_", "LOCAL_ACCOUNT", "retail", LocalSourceReadiness.Ready, "0.3.4");
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public void LocalAccountNeedsKeepPriorityOverCloudNotice(bool english)
     {
         var result = Result(CloudIssue, new SyncIssue("source_not_initialized", "Needs a save.", "local-account")) with

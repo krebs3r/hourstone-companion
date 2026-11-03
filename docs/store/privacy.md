@@ -1,6 +1,6 @@
 # Hourstone Companion – Datenschutzhinweise / Privacy information
 
-Stand / Updated: 2026-09-25 · Produktversion / Product version: 0.2.0
+Stand / Updated: 2026-11-03 · Produktversion / Product version: 0.2.1
 
 ## Deutsch
 
@@ -20,7 +20,7 @@ Die App schreibt ein verwaltetes Datenaddon in die ausgewählten WoW-Installatio
 
 ### Optionaler Austausch zwischen deinen PCs
 
-Erst nach Auswahl eines gemeinsamen Ordners schreibt die App dort unter `HourstoneSync` eine Gruppenkennung und eine Snapshot-Datei je Gerät. Diese Dateien enthalten Gerätekennung und -bezeichnung, Revisionen, die ausgewählten Charakterbeobachtungen einschließlich Gilde, Spielzeit und Retail-Fortschritt sowie Ausblende-/Wiederherstellungsentscheidungen mit ihren Kennungen. Die lokalen Accountordnernamen, Installationspfade und Darstellungseinstellungen gehören nicht zum Snapshot-Format.
+Erst nach Auswahl eines gemeinsamen Ordners schreibt die App dort unter `HourstoneSync` eine Gruppenkennung und eine Snapshot-Datei je Gerät. Diese Dateien enthalten Gerätekennung und -bezeichnung, Revisionen, die ausgewählten Charakterbeobachtungen einschließlich Gilde, Spielzeit und Retail-Fortschritt sowie Ausblende-/Wiederherstellungsentscheidungen mit ihren Kennungen. Die lokalen Accountordnernamen, Installationspfade und Darstellungseinstellungen gehören nicht zum Snapshot-Format. Ein Gerät, auf dem eine Installation von WoW: Forever ausgewählt ist, schreibt dort zusätzlich eine kleine Hinweisdatei mit Gruppen- und Gerätekennung sowie den Quellenkennungen seiner ausgewählten Forever-Installationen, damit andere PCs diese Charaktere als WoW: Forever bezeichnen können.
 
 Die Dateien liegen in lesbarem JSON vor; Hourstone fügt keine eigene Verschlüsselung hinzu. Dein Dateisynchronisierungsdienst überträgt sie entsprechend deiner Einrichtung. Personen und Geräte mit Zugriff auf den Ordner können sie lesen. Hourstone verwendet keine direkte Dropbox-, OneDrive- oder Proton-Drive-Anmeldung und erhält keine Zugangsdaten dieser Dienste. Es gibt keinen Hourstone-Synchronisierungsserver.
 
@@ -56,7 +56,7 @@ The app writes a managed data addon into selected WoW installations so WoW can d
 
 ### Optional exchange between your PCs
 
-After you select a shared folder, the app writes a group identifier and one snapshot file per device under `HourstoneSync`. These files contain device identifier and display name, revisions, selected character observations including guild, playtime and Retail progress, and hide/restore decisions with their identifiers. Local account-folder names, installation paths and appearance preferences are not part of the snapshot format.
+After you select a shared folder, the app writes a group identifier and one snapshot file per device under `HourstoneSync`. These files contain device identifier and display name, revisions, selected character observations including guild, playtime and Retail progress, and hide/restore decisions with their identifiers. Local account-folder names, installation paths and appearance preferences are not part of the snapshot format. A device with a selected WoW: Forever installation also writes a small hint file there containing the group and device identifiers and the source identifiers of its selected Forever installations, so other PCs can label those characters as WoW: Forever.
 
 The files are readable JSON; Hourstone adds no encryption of its own. Your file synchronization service transfers them according to your setup. People and devices with access to the folder can read them. Hourstone does not sign in directly to Dropbox, OneDrive or Proton Drive and does not receive their credentials. There is no Hourstone synchronization server.
 
@@ -76,4 +76,4 @@ If you request support, only information you choose to submit is shared. Do not 
 
 ---
 
-Historical submission record: on 2026-09-18, the then-current German and English text was saved in Partner Center using its **Privacy policy text** option, without Markdown formatting or this internal record. That submission failed certification on 2026-09-21. The current revision adds the support email; its upload status is recorded in `artifacts/store-submission/partner-center-status.json`. Publisher display name: **Martin Krebs Software**. Submission does not constitute privacy/legal approval or a successful certification result.
+Historical submission record: on 2026-09-18, the then-current German and English text was saved in Partner Center using its **Privacy policy text** option, without Markdown formatting or this internal record. That submission failed certification on 2026-09-21. The 2026-09-25 revision added the support email; its upload status is recorded in `artifacts/store-submission/partner-center-status.json`. The 0.2.1 revision adds the client hint file and has not yet been saved in Partner Center. Publisher display name: **Martin Krebs Software**. Submission does not constitute privacy/legal approval or a successful certification result.

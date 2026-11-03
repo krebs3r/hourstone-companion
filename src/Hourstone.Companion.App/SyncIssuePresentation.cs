@@ -35,6 +35,10 @@ public static class SyncIssuePresentation
         if (pending > 0) return english
             ? $"{pending} account source(s) need attention. Open Clients for the next step. Last valid data is kept."
             : $"{pending} Account-Quelle(n) benötigen Aufmerksamkeit. Unter Clients findest du den nächsten Schritt. Gültige Daten bleiben erhalten.";
+        // Skipped rows never block synchronization, so they must not hide any other failure.
+        if (OnlyUnsupportedClientRows(result)) return english
+            ? "Some saved characters belong to a client the Companion does not know and are not shown. Open Clients for the next step."
+            : "Einige gespeicherte Charaktere gehören zu einem Client, den der Companion nicht kennt, und werden nicht angezeigt. Unter Clients findest du den nächsten Schritt.";
         if (result.Issues.Any(issue => issue.Code == "cloud_file_not_local")) return (english
             ? "A sync file is not yet fully available locally. "
             : "Eine Sync-Datei ist noch nicht vollständig lokal verfügbar. ") + OfflineInstruction(english) + (english
@@ -44,6 +48,8 @@ public static class SyncIssuePresentation
             ? "Sync needs attention. Last valid data is kept. See Synchronization → Local diagnostics."
             : "Der Abgleich benötigt Aufmerksamkeit. Gültige Daten bleiben erhalten. Details stehen unter Synchronisierung → Lokale Diagnose.";
     }
+
+    public static bool OnlyUnsupportedClientRows(SyncResult result) => result.Issues.Count > 0 && result.Issues.All(issue => issue.Code == "unsupported_client_rows");
 
     private static string OfflineInstruction(bool english) => english
         ? "Set the entire sync folder (for example, HourstoneSync) to “Always keep on this device” on both PCs and wait for the download."

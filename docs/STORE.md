@@ -2,6 +2,8 @@
 
 Resubmitted package (25 September 2026): package **1.0.1.0**, product **0.2.0**. Certification of 1.0.0.0 failed on 21 September under **10.6.3 Capabilities**. The report leaves the capability name as a placeholder; `unvirtualizedResources` is the likely cause. The new candidate removes it and uses manual legacy-startup handover. Support: **mail@martin-krebs.eu**, with GitHub retained as the project website. See [the remediation record](store/CERTIFICATION-FIX-2026-09-24.md). Resubmitted at 19:36 UTC / 21:36 Europe/Berlin; Partner Center confirmed In certification, with pre-processing in progress. Approval and publication are pending.
 
+Product 0.2.1 requires a separate Store submission with a higher package version and its own certification. No 0.2.1 submission is recorded here yet. Its privacy text adds the client hint file described in [privacy.md](store/privacy.md).
+
 The direct Windows app remains independently runnable and uses its existing Velopack/GitHub release pipeline. Neither its build nor its first launch requires a Microsoft Store identity, account, approval, or signing certificate when explicitly building locally with `tools/package.ps1 -Unsigned`.
 
 The additional Store artifact is a self-contained Windows 11 x64 MSIX containing the existing WPF application. `runFullTrust` permits the normal desktop process; the package does not request elevation or add Windows services. Local test and production package identities are deliberately separate. Packaging never publishes a release, submits to Partner Center, installs the app, or trusts a certificate.

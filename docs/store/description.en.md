@@ -26,9 +26,9 @@ No additional Hourstone account is required. The app reads saved addon data loca
 
 ## Requirements
 
-Windows 11 on an x64 PC. World of Warcraft and the Hourstone addon are required separately to record your own game data. Supported clients are Retail, Mists Classic, TBC Anniversary and Classic Era; the progress view is for Retail.
+Windows 11 on an x64 PC. World of Warcraft and the Hourstone addon are required separately to record your own game data. Supported clients are Retail, WoW: Forever, Mists Classic, TBC Anniversary and Classic Era; the progress view is for Retail and does not include WoW: Forever.
 
-Playtime, guilds and visibility require Hourstone 0.2.2 or later. Local Retail progress can be read from addon 0.3.1; sending progress back into WoW requires addon 0.3.2 with protocol-4 support. All participating Companions must use version 0.2.0 for the new exchange between PCs. The addon is updated separately.
+Playtime, guilds and visibility require Hourstone 0.2.2 or later. Local Retail progress can be read from addon 0.3.1; sending progress back into WoW requires addon 0.3.2 with protocol-4 support. On WoW: Forever, use Hourstone 0.3.5 or later. All participating Companions must use version 0.2.0 or later for the new exchange between PCs. The addon is updated separately.
 
 For optional exchange, keep the selected sync folder permanently available locally on every PC. An external synchronization service has its own setup, account requirements and possible costs.
 
