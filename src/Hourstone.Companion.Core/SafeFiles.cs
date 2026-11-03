@@ -163,9 +163,32 @@ public static partial class SourceDiscovery
             || name.Equals("_test_", StringComparison.OrdinalIgnoreCase) || name.Equals("_classic_test_", StringComparison.OrdinalIgnoreCase)
             || name.Equals("_alpha_", StringComparison.OrdinalIgnoreCase);
     }
+    public static IReadOnlyList<(SourceConfiguration Skipped, SourceConfiguration Original)> AddDiscovered(List<SourceConfiguration> sources, IEnumerable<DiscoveredSource> found)
+    {
+        var duplicates = new List<(SourceConfiguration Skipped, SourceConfiguration Original)>();
+        static bool SamePath(SourceConfiguration a, SourceConfiguration b) => string.Equals(a.SavedVariablesPath, b.SavedVariablesPath, StringComparison.OrdinalIgnoreCase);
+        // Forever is usually the copy, since its WTF folder is migrated from another client, so other clients win a tie,
+        // also against a Forever installation that was selected on its own before.
+        foreach (var source in found.OrderBy(s => s.Configuration.IsForever).Select(s => s.Configuration))
+        {
+            if (sources.Any(x => SamePath(x, source)) || duplicates.Any(d => SamePath(d.Skipped, source))) continue;
+            // A copied WTF folder keeps the original Hourstone source ID; one logical source cannot be selected twice.
+            var index = sources.FindIndex(x => x.SourceId == source.SourceId);
+            if (index < 0) { sources.Add(source); continue; }
+            var original = sources[index];
+            if (original.IsForever && !source.IsForever) { sources[index] = source with { Enabled = original.Enabled }; duplicates.Add((original, sources[index])); }
+            else duplicates.Add((source, original));
+        }
+        return duplicates;
+    }
+    // WoW: Forever installs as _forever_ beside _retail_ and ships the same Wow.exe; only the folder tells them apart.
+    public static bool IsForeverClient(string client) =>
+        Path.GetFileName(client.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)).Equals("_forever_", StringComparison.OrdinalIgnoreCase);
     private static string DetectFlavor(string client) => Path.GetFileName(client).ToLowerInvariant() switch
     {
         "_retail_" => "retail",
+        // Hourstone records Forever characters as Retail because protocol 4 has no Forever family.
+        "_forever_" => "retail",
         "_classic_era_" => "era",
         "_classic_anniversary_" or "_anniversary_" => "tbc",
         "_classic_" => "mists",

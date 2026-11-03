@@ -77,6 +77,7 @@ public static class SourceStatusPresentation
                 if (readiness == LocalSourceReadiness.ReadFailed) line += " " + issue.Message;
                 lines.Add(line);
             }
+            else if (issue.Code == "unsupported_client_rows") lines.Add($"{context}: {UnsupportedClientRows(english)} [{issue.Code}] {issue.Message}");
             else lines.Add($"{context}: [{issue.Code}] {issue.Message}");
         }
         foreach (var status in result.LocalSourceStatuses)
@@ -92,7 +93,11 @@ public static class SourceStatusPresentation
         return english ? "Last check completed. No errors." : "Letzte Prüfung abgeschlossen. Keine Fehler.";
     }
 
-    private static string Context(LocalSourceStatus status) => $"{MainViewModel.ClientName(status.Flavor)} · {status.AccountName}";
+    // Logging in with a copied beta file would adopt beta characters for good, so the remedy depends on where the rows come from.
+    public static string UnsupportedClientRows(bool english) => english
+        ? "Some characters in this account were saved by an older Hourstone for a client the Companion does not know, for example WoW: Forever beta characters saved by Hourstone 0.3.3. They are not shown. If they are beta characters, close WoW and move SavedVariables\\Hourstone.lua out of this client. Otherwise update Hourstone, log in once in this client, then log out or use /reload."
+        : "Einige Charaktere dieses Accounts hat eine ältere Hourstone-Version für einen Client gespeichert, den der Companion nicht kennt, zum Beispiel Beta-Charaktere aus WoW: Forever mit Hourstone 0.3.3. Sie werden nicht angezeigt. Sind es Beta-Charaktere, schließe WoW und verschiebe SavedVariables\\Hourstone.lua aus diesem Client. Sonst aktualisiere Hourstone, logge dich einmal in diesem Client ein und anschließend aus oder nutze /reload.";
+    private static string Context(LocalSourceStatus status) => $"{MainViewModel.ClientName(status.Flavor, SourceDiscovery.IsForeverClient(status.ClientDirectory))} · {status.AccountName}";
     private static string VersionLabel(LocalSourceStatus status, bool english) => string.IsNullOrWhiteSpace(status.DetectedAddonVersion)
         ? english ? "unknown" : "unbekannt" : status.DetectedAddonVersion;
     private static LocalSourceReadiness? ReadinessForCode(string code) => code switch

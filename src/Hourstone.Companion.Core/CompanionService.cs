@@ -13,6 +13,7 @@ public sealed class CompanionService : IDisposable
     private IReadOnlyList<Observation> characters = [];
     private IReadOnlyList<Observation> allCharacters = [];
     private IReadOnlyList<Observation> removedCharacters = [];
+    private HashSet<string> foreverIdentities = new(StringComparer.Ordinal);
     private IReadOnlyList<ProgressObservation> progress = [];
     private IReadOnlyList<ProgressObservation> rawProgress = [];
     private IReadOnlyList<DeviceStatus> devices = [];
@@ -46,6 +47,8 @@ public sealed class CompanionService : IDisposable
     public IReadOnlyList<DeviceStatus> GetDevices() { lock (gate) return devices.ToArray(); }
     public IReadOnlyList<Observation> GetCharacters() { lock (gate) return characters.ToArray(); }
     public IReadOnlyList<Observation> GetRemovedCharacters() { lock (gate) return removedCharacters.ToArray(); }
+    /// <summary>Display only: identities from this PC's WoW: Forever installations and from Forever sources that peers label in their client hints.</summary>
+    public IReadOnlySet<string> GetForeverIdentities() { lock (gate) return foreverIdentities.ToHashSet(StringComparer.Ordinal); }
     /// <summary>Display projection, including hidden characters; never used as a local contribution.</summary>
     public IReadOnlyList<ProgressObservation> GetProgress() { lock (gate) return progress.ToArray(); }
     public void SetCharacterRemoved(Observation observation, bool removed)
@@ -97,7 +100,7 @@ public sealed class CompanionService : IDisposable
         lock (gate)
         {
             ThrowIfDisposed(); configuration = configuration with { CloudFolder = null, GroupId = null, CloudPaused = false };
-            store.Transaction(() => { PersistConfiguration(); store.ClearSnapshots(); }); RefreshViews();
+            store.Transaction(() => { PersistConfiguration(); store.ClearSnapshots(); store.Set("clientHints", "[]"); }); RefreshViews();
         }
     }
     public async Task<SyncResult> SyncNowAsync(CancellationToken cancellationToken = default)
@@ -150,7 +153,10 @@ public sealed class CompanionService : IDisposable
                     var merged = VisibilityRules.Merge(store.ReadVisibility().Concat(parsed.Visibility));
                     foreach (var message in parsed.ProgressIssues)
                         issues.Add(new SyncIssue(parsed.ProgressStatus == ProgressReadStatus.Unsupported ? "progress_unsupported" : "progress_read_failed",
-                            $"{source.Flavor} / {source.AccountName}: Fortschrittsdaten konnten nicht vollständig gelesen werden; gültige Daten bleiben erhalten: {message}", effective.SourceId));
+                            $"{source.ClientKey} / {source.AccountName}: Fortschrittsdaten konnten nicht vollständig gelesen werden; gültige Daten bleiben erhalten: {message}", effective.SourceId));
+                    if (parsed.UnsupportedClientRows > 0)
+                        issues.Add(new SyncIssue("unsupported_client_rows",
+                            $"{source.ClientKey} / {source.AccountName}: {parsed.UnsupportedClientRows} Charakter(e) eines nicht unterstützten Clients wurden nicht übernommen.", effective.SourceId));
                     var localIdentities = parsed.Observations.Select(ObservationRules.Identity).ToHashSet(StringComparer.Ordinal);
                     var nextProgress = ProgressRules.MergeSources(store.ReadSourceProgress(effective.SourceId).Concat(parsed.ProgressObservations))
                         .Where(item => localIdentities.Contains(ProgressRules.Identity(item))).ToList();
@@ -178,7 +184,7 @@ public sealed class CompanionService : IDisposable
             }
             catch (Exception ex) when (IsRecoverable(ex))
             {
-                var message = $"{source.Flavor} / {source.AccountName}: Quelle konnte nicht vollständig gelesen werden; der letzte gültige Stand bleibt verfügbar: " + ex.Message;
+                var message = $"{source.ClientKey} / {source.AccountName}: Quelle konnte nicht vollständig gelesen werden; der letzte gültige Stand bleibt verfügbar: " + ex.Message;
                 status = status with { Readiness = LocalSourceReadiness.ReadFailed, Message = message };
                 issues.Add(new SyncIssue("source_read_failed", message, source.SourceId));
             }
@@ -201,7 +207,8 @@ public sealed class CompanionService : IDisposable
                 canPublish = ReadCloudSnapshots(configuration.CloudFolder, local, issues, cancellationToken);
                 // Accepted control state is deliberately relayed in this cycle; received playtime never enters own.
                 local = EnsureLocalSnapshot(own, ownProgress, groupId);
-                if (canPublish) { SafeFiles.AtomicWriteOwned(configuration.CloudFolder, configuration.DeviceId + ".json", ObservationRules.CanonicalSnapshot(local)); cloudPublished = true; }
+                if (canPublish) { SafeFiles.AtomicWriteOwned(configuration.CloudFolder, configuration.DeviceId + ".json", ObservationRules.CanonicalSnapshot(local)); cloudPublished = true; PublishClientHints(configuration.CloudFolder, groupId); }
+                ReadClientHints(configuration.CloudFolder, groupId);
             }
             catch (CloudFileNotLocalException ex)
             { issues.Add(CloudFileNotLocalIssue(ex)); }
@@ -226,7 +233,7 @@ public sealed class CompanionService : IDisposable
                 var statuses = sourceStatuses.Where(s => StringComparer.OrdinalIgnoreCase.Equals(Path.GetFullPath(s.ClientDirectory), client)).ToArray();
                 var format = statuses.Length > 0 && statuses.All(s => s.SyncFormatVersion == 4) ? 4 : 3;
                 DataAddonWriter.Write(client, sources, allCharacters, VisibilityFor(allCharacters), rawProgress, format);
-                if (format == 3 && selected.Any(s => s.Flavor == "retail" && StringComparer.OrdinalIgnoreCase.Equals(Path.GetFullPath(s.ClientDirectory), client)) && rawProgress.Count > 0)
+                if (format == 3 && selected.Any(s => s.Flavor == "retail" && !s.IsForever && StringComparer.OrdinalIgnoreCase.Equals(Path.GetFullPath(s.ClientDirectory), client)) && rawProgress.Count > 0)
                     issues.Add(new SyncIssue("progress_addon_update_required", $"Der Fortschritt ist im Companion verfügbar. Für den Rückimport nach WoW benötigt diese Installation Hourstone {AddonReadiness.ProgressAddonVersion} mit Sync-Protokoll 4."));
             }
             catch (Exception ex) when (IsRecoverable(ex)) { managedClients.Add(client); issues.Add(new SyncIssue("addon_write_failed", "Sync-Datenaddon konnte nicht aktualisiert werden: " + ex.Message)); }
@@ -342,6 +349,41 @@ public sealed class CompanionService : IDisposable
         });
         return publish;
     }
+    private void PublishClientHints(string folder, string groupId)
+    {
+        var name = configuration.DeviceId + ClientHints.Extension;
+        var forever = configuration.Sources.Where(s => s.Enabled && s.IsForever).Select(s => s.SourceId).ToList();
+        // Display only: a hint that cannot be written or withdrawn is retried next cycle and never degrades synchronization.
+        try
+        {
+            if (forever.Count > 0) { SafeFiles.AtomicWriteOwned(folder, name, ClientHints.Canonical(new ClientHints { GroupId = groupId, DeviceId = configuration.DeviceId, ForeverSources = forever })); return; }
+            var path = Path.Combine(folder, name); SafeFiles.EnsureNoReparsePoints(path);
+            if (File.Exists(path)) File.Delete(path);
+        }
+        catch (Exception ex) when (IsRecoverable(ex)) { }
+    }
+    private void ReadClientHints(string folder, string groupId)
+    {
+        var previous = StoredClientHints(groupId).ToDictionary(hints => hints.DeviceId, StringComparer.OrdinalIgnoreCase); var current = new List<ClientHints>();
+        var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var path in Directory.EnumerateFiles(folder, "*" + ClientHints.Extension, SearchOption.TopDirectoryOnly).Take(512).Order(StringComparer.Ordinal))
+        {
+            var deviceId = Path.GetFileNameWithoutExtension(path);
+            // Case variants in a case-sensitive folder name the same device; only one hint per device is kept.
+            if (deviceId.Equals(configuration.DeviceId, StringComparison.OrdinalIgnoreCase) || !seen.Add(deviceId)) continue;
+            // Display only: an unreadable, newer or conflicting hint keeps the last valid one and never blocks synchronization.
+            try { current.Add(ClientHints.Parse(SafeFiles.StableRead(path, ClientHints.MaximumBytes), groupId, deviceId)); }
+            catch (Exception ex) when (IsRecoverable(ex)) { if (previous.TryGetValue(deviceId, out var kept)) current.Add(kept); }
+        }
+        store.Set("clientHints", JsonSerializer.Serialize(current, JsonContract.Options));
+    }
+    private IEnumerable<ClientHints> StoredClientHints(string groupId)
+    {
+        // Distinct by device, so even a damaged stored list can never stop the service from starting.
+        try { return (JsonSerializer.Deserialize<List<ClientHints>>(store.Get("clientHints") ?? "[]", JsonContract.Options) ?? []).Where(hints => hints.GroupId == groupId)
+            .DistinctBy(hints => hints.DeviceId, StringComparer.OrdinalIgnoreCase).ToArray(); }
+        catch (JsonException) { return []; }
+    }
     private static SyncIssue CloudFileNotLocalIssue(CloudFileNotLocalException exception) => new("cloud_file_not_local",
         "Die Cloud-Datei ist auf diesem PC noch nicht vollständig lokal verfügbar. Markiere den gesamten HourstoneSync-Ordner auf beiden PCs als dauerhaft lokal verfügbar; der Companion versucht das Lesen erneut. Gültige Daten bleiben erhalten.")
         { FilePath = exception.FilePath };
@@ -354,9 +396,15 @@ public sealed class CompanionService : IDisposable
     };
     private void RefreshViews()
     {
-        var selected = configuration.Sources.Where(s => s.Enabled).ToList(); var own = selected.SelectMany(s => store.ReadSource(s.SourceId)).ToList();
+        var selected = configuration.Sources.Where(s => s.Enabled).ToList();
+        var bySource = selected.Select(s => (Source: s, Observations: store.ReadSource(s.SourceId))).ToList(); var own = bySource.SelectMany(x => x.Observations).ToList();
         var groupId = configuration.GroupId ?? Guid.Empty.ToString("D"); var cached = store.ReadSnapshots(groupId);
         var remote = cached.Where(s => s.Snapshot.DeviceId != configuration.DeviceId).ToArray();
+        // A peer's hint only labels that peer's own sources.
+        var hints = StoredClientHints(groupId).ToDictionary(item => item.DeviceId, item => item.ForeverSources.ToHashSet(StringComparer.Ordinal), StringComparer.OrdinalIgnoreCase);
+        foreverIdentities = bySource.Where(x => x.Source.IsForever).SelectMany(x => x.Observations)
+            .Concat(remote.SelectMany(s => hints.TryGetValue(s.Snapshot.DeviceId, out var forever) ? s.Snapshot.Observations.Where(o => forever.Contains(o.SourceId)) : []))
+            .Select(ObservationRules.Identity).ToHashSet(StringComparer.Ordinal);
         var visibility = VisibilityRules.Merge(store.ReadVisibility().Concat(cached.SelectMany(item => item.Snapshot.Visibility ?? [])));
         store.WriteVisibility(visibility);
         var hidden = visibility.Where(VisibilityRules.IsRemoved).Select(VisibilityRules.Identity).ToHashSet(StringComparer.Ordinal);

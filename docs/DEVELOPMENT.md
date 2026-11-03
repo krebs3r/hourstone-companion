@@ -2,7 +2,7 @@
 
 The solution contains a WPF application, a platform-independent synchronization
 core and automated tests. Use Windows 11 x64 and the .NET SDK pinned by `global.json`.
-The current product version is **0.2.0**, including the earlier 0.1.7 fixes.
+The current product version is **0.2.1**, a patch release on top of 0.2.0.
 GitHub releases use the direct installer/portable channel; Store certification
 is tracked separately in [STORE.md](STORE.md).
 
@@ -114,6 +114,14 @@ advertises exactly `## X-Hourstone-Sync-Protocol: 4`, supplied by addon 0.3.2.
 Without that capability, output stays at format 3 and carries playtime, guild and
 visibility data. Local schema-3 SavedVariables and progress-cache version 1 remain
 unchanged; the Companion database migrates atomically to schema 2.
+
+Companion 0.2.1 leaves protocol 4 and database schema 2 unchanged. WoW: Forever
+installations (client folder `_forever_`) keep the `retail` flavor in snapshots,
+stored records and the `Hourstone_Sync` data addon; their separate label is display
+data only. Other PCs learn it from [client hints](sync-client-hints.md), a
+Companion-only file outside the pinned contract that the addon never reads. The
+`Hourstone_Sync.toc` written by the Companion declares the same interface list as
+the Hourstone addon TOC: `120105, 50504, 20506, 11509, 16001`.
 
 The five progress families use independent, deterministic whole-record merges.
 Raw storage and transport preserve source provenance; combined display values are

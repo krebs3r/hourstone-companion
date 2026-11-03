@@ -21,7 +21,7 @@ public static partial class SavedVariablesReader
         if (root.GetValueOrDefault("characters") is not Dictionary<string, object?> characters)
             throw new InvalidDataException("SavedVariables must contain a characters table.");
         if (characters.Count > ObservationRules.MaximumObservations) throw new InvalidDataException("Too many characters.");
-        var result = new List<Observation>();
+        var result = new List<Observation>(); var unsupported = 0;
         foreach (var (key, value) in characters)
         {
             if (value is not Dictionary<string, object?> row) throw new InvalidDataException("Invalid character table.");
@@ -33,7 +33,13 @@ public static partial class SavedVariablesReader
             if (secondsValue is not double seconds) throw new InvalidDataException("Character seconds is not a number.");
             var flavor = String(row, "flavor", false);
             if (flavor.Length == 0) flavor = source.Flavor;
-            if (flavor != source.Flavor) continue; // A source contributes only its own client family.
+            if (flavor != source.Flavor)
+            {
+                // A source contributes only its own client family. Rows of an unknown client, such as "project-18"
+                // from Hourstone 0.3.3 on WoW: Forever, are counted so the user learns why they are missing.
+                if (!ObservationRules.Flavors.Contains(flavor, StringComparer.Ordinal)) unsupported++;
+                continue;
+            }
             var region = String(row, "region", false);
             if (region.Length == 0) region = "unknown"; // Configuration metadata cannot confirm an individual legacy character region.
             var guid = String(row, "guid", false);
@@ -64,7 +70,7 @@ public static partial class SavedVariablesReader
         }
         var progress = ReadProgress(root.GetValueOrDefault("progress"), source, effectiveId);
         return new ParsedSavedVariables((int)version, sourceId.Length > 0 ? sourceId : null, ObservationRules.Merge(result))
-        { Visibility = visibility, ProgressObservations = progress.Values, ProgressStatus = progress.Status, ProgressIssues = progress.Issues };
+        { Visibility = visibility, ProgressObservations = progress.Values, ProgressStatus = progress.Status, ProgressIssues = progress.Issues, UnsupportedClientRows = unsupported };
     }
 
     private static IReadOnlyList<CharacterVisibility> ReadVisibility(object? value)
@@ -256,4 +262,6 @@ public sealed record ParsedSavedVariables(int SchemaVersion, string? SourceId, I
     public IReadOnlyList<ProgressObservation> ProgressObservations { get; init; } = [];
     public ProgressReadStatus ProgressStatus { get; init; }
     public IReadOnlyList<string> ProgressIssues { get; init; } = [];
+    /// <summary>Rows of this source saved for a client family the protocol does not know; they are never imported.</summary>
+    public int UnsupportedClientRows { get; init; }
 }

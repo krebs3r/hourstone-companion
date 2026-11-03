@@ -115,6 +115,14 @@ public sealed class SourceStatusPresentationTests
         Assert.Contains("Retail · READY_ACCOUNT: Bereit", diagnostics); Assert.Contains("Retail · MISSING_ACCOUNT: Hourstone fehlt", diagnostics);
     }
     [Fact]
+    public void ForeverInstallationIsNamedApartFromRetailWithTheSameAccount()
+    {
+        var retail = Status(LocalSourceReadiness.Ready, "retail-id");
+        var forever = Status(LocalSourceReadiness.AddonMissing, "forever-id") with { ClientDirectory = @"C:\Synthetic\WoW\_forever_" };
+        var diagnostics = SourceStatusPresentation.Diagnostics(Result([retail, forever], new SyncIssue("addon_missing", "generic", forever.SourceId)), [Source(retail), Source(forever)], true);
+        Assert.Contains("Retail · TEST_ACCOUNT: Ready", diagnostics); Assert.Contains("WoW: Forever · TEST_ACCOUNT: Hourstone missing", diagnostics);
+    }
+    [Fact]
     public void UnknownInstalledVersionIsLocalizedAndNeverInvented()
     {
         var status = Status(LocalSourceReadiness.AddonOutdated, version: null);

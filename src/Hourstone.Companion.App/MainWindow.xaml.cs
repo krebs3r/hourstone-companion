@@ -208,7 +208,8 @@ public partial class MainWindow : Window
         var pending = result.LocalSourceStatuses.Count(status => status.Readiness != LocalSourceReadiness.Ready);
         var text = SyncIssuePresentation.Notice(result, vm.English)!;
         NoticeText.Text = text; Notice.Visibility = Visibility.Visible;
-        NoticeSourceButton.Visibility = pending > 0 ? Visibility.Visible : Visibility.Collapsed; syncNotice = true;
+        var sourceAction = pending > 0 || SyncIssuePresentation.OnlyUnsupportedClientRows(result);
+        NoticeSourceButton.Visibility = sourceAction ? Visibility.Visible : Visibility.Collapsed; syncNotice = true;
         if (announce && !IsVisible && tray != null)
         {
             tray.BalloonTipTitle = "Hourstone Companion"; tray.BalloonTipText = text; tray.ShowBalloonTip(6000);
@@ -217,7 +218,9 @@ public partial class MainWindow : Window
     void ShowSources_Click(object sender, RoutedEventArgs e)
     {
         ClientsNav.IsChecked = true; RefreshSources();
-        var first = service?.LastResult.LocalSourceStatuses.FirstOrDefault(status => status.Readiness != LocalSourceReadiness.Ready);
+        var result = service?.LastResult;
+        var first = result?.LocalSourceStatuses.FirstOrDefault(status => status.Readiness != LocalSourceReadiness.Ready
+            || result.Issues.Any(issue => issue.Code == "unsupported_client_rows" && issue.SourceId == status.SourceId));
         if (first is not null)
             Dispatcher.InvokeAsync(() => SourcesPanel.Children.OfType<FrameworkElement>().FirstOrDefault(card => Equals(card.Tag, first.SourceId))?.BringIntoView(), DispatcherPriority.Loaded);
     }
@@ -228,7 +231,7 @@ public partial class MainWindow : Window
         {
             var result = await service.SyncNowAsync(stopping.Token);
             vm.RecordCheck(result.CompletedAt);
-            vm.SetObservations(service.GetCharacters(), service.GetRemovedCharacters());
+            vm.SetObservations(service.GetCharacters(), service.GetRemovedCharacters(), service.GetForeverIdentities());
             vm.Progress.SetProgress(service.GetProgress());
             vm.Status = vm.Text(result.Success ? (result.SourceCount > 0 ? "Active" : "Unconfigured") : "Attention");
             DiagnosticsText.Text = SourceStatusPresentation.Diagnostics(result, service.GetConfiguration().Sources, vm.English);
@@ -284,7 +287,7 @@ public partial class MainWindow : Window
             else if (service != null)
             {
                 service.SetCharacterRemoved(row.Value, remove);
-                vm.SetObservations(service.GetCharacters(), service.GetRemovedCharacters());
+                vm.SetObservations(service.GetCharacters(), service.GetRemovedCharacters(), service.GetForeverIdentities());
                 await ScanAsync();
             }
         }
@@ -343,29 +346,42 @@ public partial class MainWindow : Window
         try
         {
             var found = service.DiscoverSources(roots); var config = service.GetConfiguration(); var sources = config.Sources.ToList();
-            foreach (var source in found) if (!sources.Any(x => string.Equals(x.SavedVariablesPath, source.SavedVariablesPath, StringComparison.OrdinalIgnoreCase))) sources.Add(source.Configuration);
+            var duplicates = SourceDiscovery.AddDiscovered(sources, found);
             if (found.Count == 0) { Notify(vm.Text("NoSources") + " " + vm.Text("FirstSave")); return; }
             service.SaveConfiguration(config with { Sources = sources }); Notice.Visibility = Visibility.Collapsed; RefreshSources(); RebuildWatchers();
             await ScanAsync();
-            if (service.LastResult.Success) Notify(vm.English ? "Sources added. Restart WoW once to load the new data addon. Later updates are loaded on login or /reload." : "Quellen hinzugefügt. Starte WoW einmal vollständig neu, damit das neue Datenaddon erkannt wird. Spätere Aktualisierungen werden beim Login oder /reload geladen.");
+            var notices = duplicates.Select(d => string.Format(vm.Culture, vm.Text("DuplicateSource"), SourceLabel(d.Skipped), SourceLabel(d.Original))).ToList();
+            // A copy found again must not hide the restart hint for a source that was actually added. Rows of an unknown
+            // client do not affect the new data addon either, so their notice keeps the hint.
+            var added = duplicates.Count == 0 || sources.Except(config.Sources).Any();
+            if (added && service.LastResult.Issues.All(issue => issue.Code == "unsupported_client_rows")) notices.Insert(0, vm.Text("SourcesAdded"));
+            if (service.LastResult.Success) Notify(string.Join(Environment.NewLine, notices));
+            // A failed scan keeps its actionable notice and Clients button; the restart hint and skipped copies are appended to it.
+            else if (notices.Count > 0)
+            {
+                if (syncNotice) NoticeText.Text += Environment.NewLine + string.Join(Environment.NewLine, notices);
+                else Notify(string.Join(Environment.NewLine, notices));
+            }
         }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException) { Notify(ex.Message); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or InvalidOperationException or InvalidDataException) { Notify(ex.Message); }
     }
+    static string SourceLabel(SourceConfiguration source) => $"{MainViewModel.ClientName(source.Flavor, source.IsForever)} · {source.AccountName} ({source.ClientDirectory})";
     void RefreshSources()
     {
         if (SourcesPanel == null) return; SourcesPanel.Children.Clear();
         IReadOnlyList<SourceConfiguration> sources = sourcePreview ?? service?.GetConfiguration().Sources ?? [];
         IReadOnlyList<LocalSourceStatus> statuses = sourceStatusPreview ?? service?.LastResult.LocalSourceStatuses ?? [];
+        var unsupported = (sourceStatusPreview is null ? service?.LastResult.Issues : null)?.Where(issue => issue.Code == "unsupported_client_rows").Select(issue => issue.SourceId).ToHashSet() ?? [];
         if (sources.Count == 0) { SourcesPanel.Children.Add(new TextBlock { Text = vm.Text("NoSources") }); return; }
         foreach (var source in sources)
         {
             var panel = new StackPanel();
-            var checkbox = new CheckBox { Content = MainViewModel.ClientName(source.Flavor) + " · " + source.AccountName, IsChecked = source.Enabled };
+            var checkbox = new CheckBox { Content = MainViewModel.ClientName(source.Flavor, source.IsForever) + " · " + source.AccountName, IsChecked = source.Enabled };
             checkbox.Click += async (_, _) =>
             {
                 var configuredService = service;
                 if (busy || configuredService == null) { checkbox.IsChecked = source.Enabled; return; }
-                try { var c = configuredService.GetConfiguration(); configuredService.SaveConfiguration(c with { Sources = c.Sources.Select(x => x.SavedVariablesPath == source.SavedVariablesPath ? x with { Enabled = checkbox.IsChecked == true } : x).ToList() }); RebuildWatchers(); await ScanAsync(); } catch (Exception ex) when (ex is IOException or ArgumentException or InvalidOperationException) { Notify(ex.Message); }
+                try { var c = configuredService.GetConfiguration(); configuredService.SaveConfiguration(c with { Sources = c.Sources.Select(x => x.SavedVariablesPath == source.SavedVariablesPath ? x with { Enabled = checkbox.IsChecked == true } : x).ToList() }); RebuildWatchers(); await ScanAsync(); } catch (Exception ex) when (ex is IOException or ArgumentException or InvalidOperationException or InvalidDataException) { Notify(ex.Message); }
             };
             panel.Children.Add(checkbox);
             panel.Children.Add(new TextBlock { Text = source.ClientDirectory, FontSize = 13, Foreground = (Brush)FindResource("Muted"), TextWrapping = TextWrapping.Wrap });
@@ -378,6 +394,11 @@ public partial class MainWindow : Window
                 panel.Children.Add(title);
                 var instruction = new TextBlock { Text = SourceStatusPresentation.Instruction(status, vm.English), FontSize = 14, TextWrapping = TextWrapping.Wrap };
                 instruction.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); panel.Children.Add(instruction);
+                if (unsupported.Contains(source.SourceId))
+                {
+                    var skipped = new TextBlock { Text = SourceStatusPresentation.UnsupportedClientRows(vm.English), FontSize = 14, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 10, 0, 0) };
+                    skipped.SetResourceReference(TextBlock.ForegroundProperty, "Gold"); panel.Children.Add(skipped);
+                }
                 if (ProductLinks.AddonActionKey(status.Readiness) is { } actionKey)
                 {
                     var action = new Button
@@ -387,14 +408,14 @@ public partial class MainWindow : Window
                         ToolTip = vm.Text("AddonDownloadTooltip")
                     };
                     System.Windows.Automation.AutomationProperties.SetAutomationId(action, "AddonDownload-" + source.SourceId);
-                    System.Windows.Automation.AutomationProperties.SetName(action, vm.Text(actionKey) + " · " + MainViewModel.ClientName(source.Flavor) + " · " + source.AccountName);
+                    System.Windows.Automation.AutomationProperties.SetName(action, vm.Text(actionKey) + " · " + MainViewModel.ClientName(source.Flavor, source.IsForever) + " · " + source.AccountName);
                     System.Windows.Automation.AutomationProperties.SetHelpText(action, vm.Text("ExternalBrowserHint"));
                     action.Click += OpenProductLink_Click; panel.Children.Add(action);
                 }
             }
             else panel.Children.Add(new TextBlock { Text = source.Enabled ? (vm.English ? "Waiting for the first check …" : "Warte auf die erste Prüfung …") : (vm.English ? "Not selected for synchronization" : "Nicht für den Abgleich ausgewählt"), FontSize = 14, Margin = new Thickness(0, 12, 0, 0) });
             var border = new Border { Style = (Style)FindResource("Card"), Child = panel, Tag = source.SourceId, Margin = new Thickness(0, 0, 0, 12) };
-            if (source.Enabled && status is not null && status.Readiness != LocalSourceReadiness.Ready) border.SetResourceReference(Border.BorderBrushProperty, "Gold");
+            if (source.Enabled && status is not null && (status.Readiness != LocalSourceReadiness.Ready || unsupported.Contains(source.SourceId))) border.SetResourceReference(Border.BorderBrushProperty, "Gold");
             SourcesPanel.Children.Add(border);
         }
     }

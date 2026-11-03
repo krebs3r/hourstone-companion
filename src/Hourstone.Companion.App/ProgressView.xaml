@@ -7,8 +7,8 @@
     </DataTemplate>
     <ItemsPanelTemplate x:Key="SlotStrip"><StackPanel Orientation="Horizontal" HorizontalAlignment="Center" /></ItemsPanelTemplate>
   </UserControl.Resources>
-  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-    <StackPanel Margin="0,0,10,0">
+  <ScrollViewer x:Name="ProgressScroller" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel x:Name="ProgressStack" Margin="0,0,10,0" VerticalAlignment="Top">
       <Border BorderBrush="{DynamicResource Line}" BorderThickness="1" Background="{DynamicResource Panel}" CornerRadius="6" Padding="0">
         <StackPanel>
           <Border BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1" Padding="18,14">
@@ -19,7 +19,7 @@
             <StackPanel Grid.Column="2"><TextBlock Text="Realm" Foreground="{DynamicResource Muted}" FontSize="13" Margin="0,0,0,5" /><ComboBox x:Name="ProgressRealmChoice" ItemsSource="{Binding Realms}" SelectedItem="{Binding SelectedRealm}" AutomationProperties.Name="Realm" /></StackPanel>
           </Grid>
           <Grid>
-            <DataGrid x:Name="ProgressGrid" ItemsSource="{Binding Rows}" SelectedItem="{Binding Selected,Mode=TwoWay}" RowHeight="68" SelectionMode="Single" SelectionUnit="FullRow" MaxHeight="420" MinHeight="116" CanUserSortColumns="True" ScrollViewer.HorizontalScrollBarVisibility="Auto" AutomationProperties.Name="{Binding Title}">
+            <DataGrid x:Name="ProgressGrid" ItemsSource="{Binding Rows}" SelectedItem="{Binding Selected,Mode=TwoWay}" RowHeight="68" SelectionMode="Single" SelectionUnit="FullRow" MinHeight="116" CanUserSortColumns="True" ScrollViewer.HorizontalScrollBarVisibility="Auto" AutomationProperties.Name="{Binding Title}">
               <DataGrid.Columns>
                 <DataGridTemplateColumn Header="Charakter" Width="1.6*" MinWidth="175" SortMemberPath="Name"><DataGridTemplateColumn.CellTemplate><DataTemplate>
                   <Grid ToolTip="{Binding Description}"><Grid.ColumnDefinitions><ColumnDefinition Width="43" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>

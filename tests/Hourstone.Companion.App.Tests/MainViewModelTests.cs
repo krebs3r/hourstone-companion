@@ -137,6 +137,20 @@ public sealed class MainViewModelTests
         var row = Assert.Single(model.Rows); Assert.Equal(label, row.Client); Assert.EndsWith("/Clients/" + iconFile, row.ClientIconPath);
     }
     [Fact]
+    public void LocalForeverCharactersGetTheirOwnClientWithoutLeavingTheRetailFamily()
+    {
+        var model = Populated(); var forever = Character("Player-1-D", "Dara", "retail", "Forever Realm", 1800);
+        model.SetObservations([.. model.VisibleObservations, forever], [], [ObservationRules.Identity(forever)]);
+        Assert.Equal(["Alle Clients", "Classic Era", "Retail", "WoW: Forever"], model.Clients); Assert.Equal(3, model.ClientCount);
+        var row = model.Rows.Single(r => r.Name == "Dara"); Assert.Equal("WoW: Forever", row.Client); Assert.EndsWith("/Clients/retail.png", row.ClientIconPath);
+        Assert.DoesNotContain(model.Progress.Rows, r => r.Name == "Dara"); Assert.Equal(2, model.Progress.Rows.Count);
+        model.SelectedClient = "WoW: Forever"; Assert.Equal("Dara", Assert.Single(model.Rows).Name);
+        model.SetLanguage(true); Assert.Equal("WoW: Forever", model.SelectedClient); Assert.Equal("Dara", Assert.Single(model.Rows).Name);
+        // Without a local Forever source the character falls back to Retail and the stale filter is reset.
+        model.SetObservations(model.VisibleObservations, [], []);
+        Assert.Equal(model.Text("AllClients"), model.SelectedClient); Assert.Equal("Retail", model.Rows.Single(r => r.Name == "Dara").Client);
+    }
+    [Fact]
     public void GuildDisplayDistinguishesMembershipAbsenceAndLegacyDataInBothLanguages()
     {
         var model = new MainViewModel(false);

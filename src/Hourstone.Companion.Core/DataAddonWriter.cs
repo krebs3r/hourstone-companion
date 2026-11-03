@@ -7,6 +7,8 @@ namespace Hourstone.Companion.Core;
 public static class DataAddonWriter
 {
     public const string OwnershipMarker = "Hourstone Companion managed data addon v1";
+    // Matches the Hourstone addon TOC. A client whose interface is missing skips the data addon as out of date; 16001 is WoW: Forever.
+    public const string InterfaceVersions = "120105, 50504, 20506, 11509, 16001";
     public static string BuildData(IEnumerable<string> selectedSourceIds, IEnumerable<Observation> union, IEnumerable<CharacterVisibility>? visibility = null,
         IEnumerable<ProgressObservation>? progressObservations = null, int formatVersion = 3)
     {
@@ -65,7 +67,7 @@ public static class DataAddonWriter
         SafeFiles.AtomicWriteOwned(directory, ".hourstone-managed", OwnershipMarker);
         // Data is committed before the initial TOC so the addon is never initially discoverable without data.
         SafeFiles.AtomicWriteOwned(directory, "Data.lua", data);
-        SafeFiles.AtomicWriteOwned(directory, "Hourstone_Sync.toc", $"## Interface: 120100, 50504, 20506, 11509\n## Title: Hourstone Sync Data\n## Notes: Local data managed by Hourstone Companion.\n## Version: {formatVersion}.0.0\n## LoadOnDemand: 0\n\nData.lua\n");
+        SafeFiles.AtomicWriteOwned(directory, "Hourstone_Sync.toc", $"## Interface: {InterfaceVersions}\n## Title: Hourstone Sync Data\n## Notes: Local data managed by Hourstone Companion.\n## Version: {formatVersion}.0.0\n## LoadOnDemand: 0\n\nData.lua\n");
     }
     private static void AppendLua(StringBuilder output, JsonElement value)
     {

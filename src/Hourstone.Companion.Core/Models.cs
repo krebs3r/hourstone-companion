@@ -53,6 +53,9 @@ public sealed record SourceConfiguration
     public string Region { get; init; } = "unknown";
     public string Flavor { get; init; } = "";
     public bool Enabled { get; init; } = true;
+    /// <summary>Display only: Forever keeps the Retail flavor in every protocol and stored record.</summary>
+    [JsonIgnore] public bool IsForever => SourceDiscovery.IsForeverClient(ClientDirectory);
+    [JsonIgnore] public string ClientKey => IsForever ? "forever" : Flavor;
     [JsonIgnore] public string SavedVariablesPath => Path.Combine(ClientDirectory, "WTF", "Account", AccountName, "SavedVariables", "Hourstone.lua");
     [JsonIgnore] public string AddonTocPath => Path.Combine(ClientDirectory, "Interface", "AddOns", "Hourstone", "Hourstone.toc");
     [JsonIgnore] public string DataAddonDirectory => Path.Combine(ClientDirectory, "Interface", "AddOns", "Hourstone_Sync");

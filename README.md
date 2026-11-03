@@ -8,8 +8,9 @@ Proton Drive folder.
 [Download Hourstone Companion for Windows](https://github.com/krebs3r/hourstone-companion/releases/latest)
 
 Choose the **Setup.exe** installer or fully extract the **Portable.zip** package.
-The .NET runtime is included. **Version 0.2.0** adds Retail progress and includes
-the earlier 0.1.7 fixes. GitHub packages are **unsigned**; Windows may warn about
+The .NET runtime is included. **Version 0.2.1** shows WoW: Forever as its own
+client, keeps copied WTF folders from stopping the app and builds on the Retail
+progress added in 0.2.0. GitHub packages are **unsigned**; Windows may warn about
 an unknown publisher or block the installer. The portable launcher passed an
 isolated startup check. End-to-end Dropbox, OneDrive and Proton Drive exchange
 between two PCs still needs practical validation. See the
@@ -17,7 +18,8 @@ between two PCs still needs practical validation. See the
 
 The separate Microsoft Store package **1.0.1.0** (product version 0.2.0) was
 resubmitted on 25 September 2026 and is awaiting certification. This GitHub
-release does not imply Store approval. See the [Store status](docs/STORE.md).
+release does not imply Store approval. The Store edition of 0.2.1 will be submitted
+separately and also requires certification. See the [Store status](docs/STORE.md).
 
 ![Hourstone Companion with sample characters](docs/assets/overview.png)
 
@@ -33,8 +35,8 @@ release does not imply Store approval. See the [Store status](docs/STORE.md).
 - Windows tray operation, configurable autostart, German/English and dark/light/system themes.
 - Clear save feedback, per-account setup guidance and original class and game icons.
 
-It supports **Windows 11 x64** with Retail, Mists Classic, TBC Anniversary and Classic
-Era. The WoW addon also works independently. Compatibility depends on the feature:
+It supports **Windows 11 x64** with Retail, WoW: Forever, Mists Classic, TBC Anniversary
+and Classic Era. The WoW addon also works independently. Compatibility depends on the feature:
 
 | Feature | Required addon | Required Companion |
 | --- | --- | --- |
@@ -49,13 +51,19 @@ compatible protocol-3 payload containing playtime, guilds and visibility to addo
 without protocol-4 support.
 There is no sync-group reset.
 
+WoW: Forever installations (client folder `_forever_`) appear as **WoW: Forever**.
+The synchronization contract keeps them in the Retail family, so the WoW addon
+lists these characters as Retail; the Companion's Retail progress view leaves them out.
+Other PCs show the label when both they and the Forever PC run Companion 0.2.1 or
+later; older Companions show Retail. Use Hourstone 0.3.5 or later on Forever.
+
 ## Setup
 
 1. Use **Download addon on CurseForge** on the **Clients** page, or open
    [Hourstone on CurseForge](https://www.curseforge.com/wow/addons/hourstone-azeroth-hours).
    Use an addon version matching the compatibility table above. Addon
-   [0.3.3 is also available on GitHub](https://github.com/krebs3r/hourstone-azeroth-hours/releases/tag/v0.3.3)
-   and supports the complete progress exchange.
+   [0.3.5 is also available on GitHub](https://github.com/krebs3r/hourstone-azeroth-hours/releases/tag/v0.3.5)
+   and supports the complete progress exchange and WoW: Forever.
    Enable Hourstone, log in with each account and log out or run `/reload` once so the addon saves its source identifier.
 2. Choose **Find installations** and select your WoW installations and account sources.
 3. Restart WoW once after the companion first creates the `Hourstone_Sync` addon.
@@ -124,7 +132,9 @@ that a cloud upload has finished or another computer is online.
 The companion never overwrites WoW SavedVariables and never executes their Lua
 contents. It keeps its SQLite database, settings and device identity locally.
 Only selected character observations, their Retail progress and the matching removal/restoration controls
-enter the provider folder. Learned controls stay locally after disconnecting;
+enter the provider folder. While a WoW: Forever installation is selected, a small
+[client hint](docs/sync-client-hints.md) naming its source IDs is added so other PCs
+can label those characters. Learned controls stay locally after disconnecting;
 unrelated old-group identities are not published into a new group.
 
 ## Synchronization

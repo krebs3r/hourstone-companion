@@ -127,6 +127,8 @@ public sealed class MainViewModel : INotifyPropertyChanged
         ["CloudFailed"] = ("Der Syncordner ist momentan nicht erreichbar. Der lokale Abgleich läuft weiter; zuletzt empfangene Daten bleiben erhalten.", "The sync folder is currently unavailable. Local sync continues and previously received data is kept."),
         ["AddonUpdateHint"] = ("Das WoW-Addon aktualisierst du separat über CurseForge.", "Update the WoW addon separately through CurseForge."),
         ["ThisPC"] = ("Dieser PC", "This PC"),
+        ["DuplicateSource"] = ("{0} wird nicht gelesen: Die gespeicherten Hourstone-Daten tragen dieselbe Daten-ID wie {1}, meist weil der WTF-Ordner kopiert wurde. Der Companion kann nur eine der beiden Installationen lesen.", "{0} is not read: its saved Hourstone data has the same data ID as {1}, usually because the WTF folder was copied. The Companion can read only one of the two installations."),
+        ["SourcesAdded"] = ("Quellen hinzugefügt. Starte WoW einmal vollständig neu, damit das neue Datenaddon erkannt wird. Spätere Aktualisierungen werden beim Login oder /reload geladen.", "Sources added. Restart WoW once to load the new data addon. Later updates are loaded on login or /reload."),
     };
     public Dictionary<string, string> T => Strings.ToDictionary(x => x.Key, x => English ? x.Value.En : x.Value.De);
     public string Text(string key) => English ? Strings[key].En : Strings[key].De;
@@ -150,6 +152,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public string BuildLabel => "v" + typeof(MainViewModel).Assembly.GetName().Version!.ToString(3);
     public string PreviewLabel => Demo ? (English ? "Preview · sample data" : "Vorschau · Beispieldaten") : "";
     List<Observation> observations = [], removedObservations = [];
+    HashSet<string> foreverIdentities = new(StringComparer.Ordinal);
     IEnumerable<Observation> DisplayObservations => showRemoved ? removedObservations : observations;
     bool showRemoved;
     CharacterRow? selectedRow;
@@ -181,7 +184,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     public string TotalTime => (observations.Sum(x => x.Seconds) / 3600).ToString("N0", Culture) + (English ? " hrs" : " Std.");
     public string TotalDays { get { var h = (long)(observations.Sum(x => x.Seconds) / 3600); return English ? $"{(h / 24).ToString("N0", Culture)} days · {h % 24} hours" : $"{(h / 24).ToString("N0", Culture)} Tage · {h % 24} Stunden"; } }
     public int CharacterCount => observations.Count;
-    public int ClientCount => observations.Select(x => x.Flavor).Distinct().Count();
+    public int ClientCount => observations.Select(ClientOf).Distinct().Count();
     public string RowSummary => showRemoved ? $"{Rows.Count} {Text("RemovedCharacters")}" : $"{Rows.Count} {Text("Characters")} · {Rows.Select(x => x.Client).Distinct().Count()} Clients";
     string status = "";
     DateTimeOffset? lastCompletedCheck;
@@ -214,10 +217,12 @@ public sealed class MainViewModel : INotifyPropertyChanged
     }
     public void SetHours(bool value) { hours = value; RefreshRows(); Changed(nameof(IsHours)); Changed(nameof(IsDays)); Changed(nameof(HoursBackground)); Changed(nameof(HoursForeground)); Changed(nameof(DaysBackground)); Changed(nameof(DaysForeground)); }
     public void NotifyDevice() => Changed(nameof(DeviceName));
-    public void SetObservations(IEnumerable<Observation> values, IEnumerable<Observation>? removedValues = null)
+    /// <param name="foreverValues">Identities seen in local WoW: Forever installations; null keeps the current set.</param>
+    public void SetObservations(IEnumerable<Observation> values, IEnumerable<Observation>? removedValues = null, IEnumerable<string>? foreverValues = null)
     {
         observations = values.ToList(); removedObservations = removedValues?.ToList() ?? [];
-        Progress.SetCharacters(observations);
+        if (foreverValues is not null) foreverIdentities = foreverValues.ToHashSet(StringComparer.Ordinal);
+        Progress.SetCharacters(observations, foreverIdentities);
         RebuildFilters();
         Changed(nameof(TotalTime)); Changed(nameof(TotalDays)); Changed(nameof(CharacterCount)); Changed(nameof(ClientCount));
         Changed(nameof(ListTitle)); Changed(nameof(ToggleRemovedLabel)); Changed(nameof(CharacterActionLabel));
@@ -225,7 +230,7 @@ public sealed class MainViewModel : INotifyPropertyChanged
     void RebuildFilters()
     {
         var oldClient = selectedClient; var oldRealm = selectedRealm;
-        Clients.Clear(); Clients.Add(Text("AllClients")); foreach (var c in DisplayObservations.Select(x => ClientName(x.Flavor)).Distinct().Order()) Clients.Add(c);
+        Clients.Clear(); Clients.Add(Text("AllClients")); foreach (var c in DisplayObservations.Select(ClientOf).Distinct().Order()) Clients.Add(c);
         Realms.Clear(); Realms.Add(Text("AllRealms")); foreach (var r in DisplayObservations.Select(x => x.Realm).Distinct().Order()) Realms.Add(r);
         selectedClient = Clients.Contains(oldClient) ? oldClient : Clients[0]; selectedRealm = Realms.Contains(oldRealm) ? oldRealm : Realms[0];
         Changed(nameof(SelectedClient)); Changed(nameof(SelectedRealm)); RefreshRows();
@@ -234,11 +239,15 @@ public sealed class MainViewModel : INotifyPropertyChanged
     void RefreshRows()
     {
         var selectedIdentity = SelectedRow is null ? null : ObservationRules.Identity(SelectedRow.Value);
-        Rows.Clear(); foreach (var o in DisplayObservations.Where(x => (x.Name.Contains(search, StringComparison.CurrentCultureIgnoreCase) || (x.Guild?.Contains(search, StringComparison.CurrentCultureIgnoreCase) ?? false)) && (string.IsNullOrEmpty(selectedClient) || selectedClient == Text("AllClients") || ClientName(x.Flavor) == selectedClient) && (string.IsNullOrEmpty(selectedRealm) || selectedRealm == Text("AllRealms") || x.Realm == selectedRealm)).OrderByDescending(x => x.Seconds).ThenBy(x => x.Name)) Rows.Add(new(o, this, hours));
+        Rows.Clear(); foreach (var o in DisplayObservations.Where(x => (x.Name.Contains(search, StringComparison.CurrentCultureIgnoreCase) || (x.Guild?.Contains(search, StringComparison.CurrentCultureIgnoreCase) ?? false)) && (string.IsNullOrEmpty(selectedClient) || selectedClient == Text("AllClients") || ClientOf(x) == selectedClient) && (string.IsNullOrEmpty(selectedRealm) || selectedRealm == Text("AllRealms") || x.Realm == selectedRealm)).OrderByDescending(x => x.Seconds).ThenBy(x => x.Name)) Rows.Add(new(o, this, hours));
         SelectedRow = Rows.FirstOrDefault(row => ObservationRules.Identity(row.Value) == selectedIdentity);
         Changed(nameof(EmptyVisibility)); Changed(nameof(EmptyMessage)); Changed(nameof(EmptyTitle)); Changed(nameof(RowSummary));
     }
-    public static string ClientName(string flavor) => flavor switch { "retail" => "Retail", "mists" => "Mists Classic", "tbc" => "TBC Anniversary", "era" => "Classic Era", _ => flavor };
+    public const string ForeverClient = "WoW: Forever";
+    public static string ClientName(string flavor, bool forever = false) => forever && flavor == "retail" ? ForeverClient
+        : flavor switch { "retail" => "Retail", "mists" => "Mists Classic", "tbc" => "TBC Anniversary", "era" => "Classic Era", _ => flavor };
+    // Forever characters from PCs running an older Companion keep the Retail label; those PCs publish no client hints.
+    public string ClientOf(Observation value) => ClientName(value.Flavor, foreverIdentities.Contains(ObservationRules.Identity(value)));
     public static List<Observation> AllClassDemoData()
     {
         string[] classes = ["WARRIOR", "PALADIN", "HUNTER", "ROGUE", "PRIEST", "DEATHKNIGHT", "SHAMAN", "MAGE", "WARLOCK", "MONK", "DRUID", "DEMONHUNTER", "EVOKER"];
@@ -302,7 +311,7 @@ public sealed class CharacterRow
     };
     public double Seconds => Value.Seconds;
     public double UpdatedAt => Value.UpdatedAt;
-    public string Client => MainViewModel.ClientName(Value.Flavor);
+    public string Client { get; }
     public string ClassIconPath => IconCatalog.ClassIconPath(Value.Class);
     public string ClientIconPath => IconCatalog.ClientIconPath(Value.Flavor);
     public string Color => light ? Value.Class switch { "DEMONHUNTER" => "#793F9C", "WARRIOR" => "#AD3930", "DRUID" => "#48691C", "MAGE" => "#167395", "ROGUE" => "#687018", "PALADIN" => "#945609", "HUNTER" => "#97541B", "WARLOCK" => "#3A61A6", _ => "#456878" } : Value.Class switch { "DEMONHUNTER" => "#CC91FF", "WARRIOR" => "#F17D72", "DRUID" => "#AAD74B", "MAGE" => "#63D4F3", "ROGUE" => "#D6E67B", "PALADIN" => "#FFBD68", "HUNTER" => "#FBB25B", "WARLOCK" => "#8CB9FF", "PRIEST" => "#E6E6EA", "SHAMAN" => "#71AEF2", "DEATHKNIGHT" => "#EE7182", "MONK" => "#60DAB3", "EVOKER" => "#70C1B0", _ => "#B8CEDC" };
@@ -310,7 +319,7 @@ public sealed class CharacterRow
     public string Age { get; }
     public CharacterRow(Observation o, MainViewModel m, bool hours)
     {
-        Value = o; light = m.IsLight; english = m.English; var minutes = (long)(o.Seconds / 60); var h = minutes / 60;
+        Value = o; Client = m.ClientOf(o); light = m.IsLight; english = m.English; var minutes = (long)(o.Seconds / 60); var h = minutes / 60;
         Time = hours ? (m.English ? $"{h.ToString("N0", m.Culture)} hrs {minutes % 60:00} min" : $"{h.ToString("N0", m.Culture)} Std. {minutes % 60:00} Min.") : (m.English ? $"{h / 24}d {h % 24}h" : $"{h / 24} T. {h % 24} Std.");
         var age = Math.Max(0, DateTimeOffset.UtcNow.ToUnixTimeSeconds() - o.UpdatedAt);
         Age = age < 60 ? m.Text("Now") : age < 3600 ? (m.English ? $"{(int)(age / 60)} min ago" : $"vor {(int)(age / 60)} Min.") : age < 86400 ? (m.English ? $"{(int)(age / 3600)} hours ago" : $"vor {(int)(age / 3600)} Std.") : age < 172800 ? (m.English ? "yesterday" : "gestern") : (m.English ? $"{(int)(age / 86400)} days ago" : $"vor {(int)(age / 86400)} Tagen");
