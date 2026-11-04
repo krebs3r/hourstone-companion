@@ -34,6 +34,10 @@ if ($Scenario -eq 'wrong-tag') { $global:releaseFixtureReference = @{ ref = 'ref
 if ($Scenario -eq 'existing-tag') { $global:releaseFixtureReference = @{ ref = 'refs/tags/v0.1.0'; object = @{ type = 'commit'; sha = ('1' * 40) } } }
 function git { $global:LASTEXITCODE = 0; return ('1' * 40) }
 function Get-AuthenticodeSignature { return @{ Status = 'NotSigned' } }
+# Delayed scenarios hide the prepared draft or its new assets from the next list reads.
+$global:releaseFixtureStaleReads = 0
+$global:releaseFixtureSleeps = 0
+function Start-Sleep { $global:releaseFixtureSleeps++ }
 function gh {
     $arguments = @($args)
     $global:releaseFixtureCalls.Add($arguments)
@@ -42,7 +46,13 @@ function gh {
         $endpoint = @($arguments | Where-Object { $_ -like 'repos/*' })[0]
         if ($Scenario -eq 'api-failure') { $global:LASTEXITCODE = 1; return }
         if ($endpoint -like '*/releases?*') {
-            $page = if ($null -eq $global:releaseFixtureRelease) { '[]' } else { ConvertTo-Json -InputObject @($global:releaseFixtureRelease) -Depth 10 -Compress }
+            if ($global:releaseFixtureStaleReads -gt 0) {
+                $global:releaseFixtureStaleReads--
+                if ($Scenario -eq 'delayed-draft') { return '[[]]' }
+                $stale = $global:releaseFixtureRelease.Clone(); $stale.assets = @()
+                return '[' + (ConvertTo-Json -InputObject @($stale) -Depth 10 -Compress) + ']'
+            }
+            $page =if ($null -eq $global:releaseFixtureRelease) { '[]' } else { ConvertTo-Json -InputObject @($global:releaseFixtureRelease) -Depth 10 -Compress }
             return '[' + $page + ']'
         }
         if ($endpoint -like '*/git/matching-refs/*') {
@@ -61,6 +71,7 @@ function gh {
             if ($arguments -notcontains '--draft' -or $arguments -notcontains '--verify-tag') { throw 'Only a draft may be prepared.' }
             $targetIndex = [Array]::IndexOf($arguments, '--target')
             $global:releaseFixtureRelease = @{ id = 123; tag_name = 'v0.1.0'; draft = $true; target_commitish = $arguments[$targetIndex + 1]; assets = @() }
+            if ($Scenario -eq 'delayed-draft') { $global:releaseFixtureStaleReads = 2 }
             return 'prepared'
         }
         if ($arguments[1] -eq 'upload') {
@@ -74,6 +85,7 @@ function gh {
             if ($Scenario -eq 'wrong-digest') { $global:releaseFixtureRelease.assets[0].digest = 'sha256:' + ('0' * 64) }
             if ($Scenario -eq 'missing-upload') { $global:releaseFixtureRelease.assets = @($global:releaseFixtureRelease.assets | Select-Object -Skip 1) }
             if ($Scenario -eq 'draft-replaced') { $global:releaseFixtureRelease.id = 456 }
+            if ($Scenario -eq 'delayed-assets') { $global:releaseFixtureStaleReads = 2 }
             return 'uploaded'
         }
         if ($arguments[1] -eq 'edit' -and $arguments -contains '--draft=false') {
@@ -89,6 +101,7 @@ try {
     & (Join-Path $PSScriptRoot 'tools/publish-release.ps1') @options
 } finally {
     ConvertTo-Json -InputObject $global:releaseFixtureCalls.ToArray() -Depth 10 | Set-Content -LiteralPath (Join-Path $PSScriptRoot 'calls.json')
+    Set-Content -LiteralPath (Join-Path $PSScriptRoot 'sleeps.txt') -Value $global:releaseFixtureSleeps
 }
 '''
 
@@ -237,6 +250,16 @@ class PackagingGates(unittest.TestCase):
                 self.assertIn("--draft=false", calls[-1])
                 self.assertIn("--latest", calls[-1])
                 self.assertEqual(calls[-2][0], "api")
+
+    def test_delayed_draft_or_assets_are_read_again_before_publication(self):
+        for scenario in ("delayed-draft", "delayed-assets"):
+            with self.subTest(scenario=scenario):
+                root, _ = self.fixture()
+                result, calls = self.publish(root, scenario=scenario)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual(calls[-1][:2], ["release", "edit"])
+                self.assertIn("--draft=false", calls[-1])
+                self.assertEqual((root / "sleeps.txt").read_text(encoding="utf-8-sig").strip(), "2")
 
     def test_failed_upload_or_remote_verification_keeps_release_unpublished(self):
         for scenario, message in (("upload-failure", "GitHub release operation failed"), ("wrong-size", "wrong size"), ("wrong-digest", "checksum does not match"), ("missing-upload", "does not match the validated package"), ("draft-replaced", "draft changed")):
