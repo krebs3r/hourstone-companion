@@ -5,6 +5,7 @@ using Xunit;
 
 namespace Hourstone.Companion.Core.Tests;
 
+[Collection(DatabaseCollection.Name)]
 public sealed class ProgressIntegrationTests : IDisposable
 {
     private readonly string root = Path.Combine(Path.GetTempPath(), "Hourstone.Progress.Tests-" + Guid.NewGuid().ToString("N"));

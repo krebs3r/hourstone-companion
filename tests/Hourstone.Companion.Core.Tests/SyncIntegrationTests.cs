@@ -4,6 +4,7 @@ using Xunit;
 
 namespace Hourstone.Companion.Core.Tests;
 
+[Collection(DatabaseCollection.Name)]
 public sealed class SyncIntegrationTests : IDisposable
 {
     private readonly string root = Path.Combine(Path.GetTempPath(), "Hourstone.Companion.Tests-" + Guid.NewGuid().ToString("N"));

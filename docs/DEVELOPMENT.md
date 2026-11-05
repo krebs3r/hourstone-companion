@@ -123,6 +123,17 @@ Companion-only file outside the pinned contract that the addon never reads. The
 `Hourstone_Sync.toc` written by the Companion declares the same interface list as
 the Hourstone addon TOC: `120105, 50504, 20506, 11509, 16001`.
 
+Companion 0.2.2 keeps protocol 4 and adds the optional `foreverSources` list of the
+[protocol 4 addendum](sync-protocol-v4-forever.md) to generated format 4 data:
+the enabled `_forever_` sources and the sources that peers name in their client
+hints, minus every source ID that another client also uses, limited to the sources
+of written observations. Without such a source the data stays byte-for-byte as
+before. The addendum, `forever-v4.json` and the generated `forever-data-v4.lua` are
+pinned like the other protocol files. `protocol4ForeverSourceCommit` identifies the
+addon commit that adds them, verified byte-for-byte against the vendored files, and
+`protocol4ForeverSourceVersion` names addon 0.3.7, which reads the list. Hourstone
+0.3.2 to 0.3.6 ignore the list.
+
 The five progress families use independent, deterministic whole-record merges.
 Raw storage and transport preserve source provenance; combined display values are
 terminal projections. Imported progress never becomes a local contribution, and

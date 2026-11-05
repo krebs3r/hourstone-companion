@@ -15,9 +15,14 @@
     "tests/Hourstone.Companion.Core.Tests/Fixtures/visibility-v3.json": "b0bb4fc0d1b5cce69fd35923606357b00b14f2e8b2e82d5a25dec83ddf781895",
     "docs/sync-protocol-v4.md": "e0c964a75a91b5d725c2f2e6d6cb0b459443923dd438a9e7fcae1f8841216b53",
     "tests/Hourstone.Companion.Core.Tests/Fixtures/progress-v4.json": "411dc36a1f62fa1ba8162fc77a56470eddb598a96a4ca34c6de869cc8c764342",
-    "tests/Hourstone.Companion.Core.Tests/Fixtures/snapshot-v4.json": "98ca6c7b0ad3c6fbec36cfb071f1eefa69e04bf919e005d4a983fd01a806d7a4"
+    "tests/Hourstone.Companion.Core.Tests/Fixtures/snapshot-v4.json": "98ca6c7b0ad3c6fbec36cfb071f1eefa69e04bf919e005d4a983fd01a806d7a4",
+    "docs/sync-protocol-v4-forever.md": "2e8963a1f3066600cd004baf4ddbe097222cfbe1066c98098aef971e3657a940",
+    "tests/Hourstone.Companion.Core.Tests/Fixtures/forever-v4.json": "17332423431b50a681ac1a74bad50e9936ff54690d96f4f203db0aea7546820e",
+    "tests/Hourstone.Companion.Core.Tests/Fixtures/forever-data-v4.lua": "8229a1616452c5936c245abb64c3532446a074efb89c62b33e0f498aad7d1c07"
   },
   "sourceCommitScope": "legacy-protocols-1-3-only",
   "protocol4SourceCommit": "c3a28fbe3dff15e9e065f8e279058084b5b00bcb",
-  "protocol4SourceVersion": "0.3.2"
+  "protocol4SourceVersion": "0.3.2",
+  "protocol4ForeverSourceCommit": "9fc4d2a95b96ecd0d2e7f5cb8813e3e71543f123",
+  "protocol4ForeverSourceVersion": "0.3.7"
 }

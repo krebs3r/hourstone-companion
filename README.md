@@ -52,10 +52,13 @@ without protocol-4 support.
 There is no sync-group reset.
 
 WoW: Forever installations (client folder `_forever_`) appear as **WoW: Forever**.
-The synchronization contract keeps them in the Retail family, so the WoW addon
-lists these characters as Retail; the Companion's Retail progress view leaves them out.
-Other PCs show the label when both they and the Forever PC run Companion 0.2.1 or
-later; older Companions show Retail. Use Hourstone 0.3.5 or later on Forever.
+The synchronization contract keeps them in the Retail family; the Companion's Retail
+progress view leaves them out. Other PCs show the label when both they and the
+Forever PC run Companion 0.2.1 or later; older Companions show Retail. From Companion
+0.2.2, the data addon also names the Forever installations, so Hourstone 0.3.7 or
+later shows these characters as WoW: Forever in every client, while older Hourstone
+versions list them as Retail. A copied `WTF` folder keeps its original's source ID
+and counts as the client it was copied from. Use Hourstone 0.3.5 or later on Forever.
 
 ## Setup
 
