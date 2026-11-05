@@ -1,6 +1,6 @@
 # Hourstone Companion – Datenschutzhinweise / Privacy information
 
-Stand / Updated: 2026-11-03 · Produktversion / Product version: 0.2.1
+Stand / Updated: 2026-11-05 · Produktversion / Product version: 0.2.2
 
 ## Deutsch
 

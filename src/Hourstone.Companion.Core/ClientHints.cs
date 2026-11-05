@@ -5,7 +5,8 @@ namespace Hourstone.Companion.Core;
 
 /// <summary>
 /// Display-only hint published beside a device snapshot: which of the device's sources are WoW: Forever installations.
-/// Older Companions read only *.json files and never see it. It does not change playtime, merging or generated addon data.
+/// Older Companions read only *.json files and never see it. It does not change playtime or merging; readers turn it into the
+/// optional foreverSources list of their generated addon data (docs/sync-protocol-v4-forever.md).
 /// </summary>
 public sealed record ClientHints
 {

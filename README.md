@@ -8,9 +8,11 @@ Proton Drive folder.
 [Download Hourstone Companion for Windows](https://github.com/krebs3r/hourstone-companion/releases/latest)
 
 Choose the **Setup.exe** installer or fully extract the **Portable.zip** package.
-The .NET runtime is included. **Version 0.2.1** shows WoW: Forever as its own
-client, keeps copied WTF folders from stopping the app and builds on the Retail
-progress added in 0.2.0. GitHub packages are **unsigned**; Windows may warn about
+The .NET runtime is included. **Version 0.2.2** tells the Hourstone addon which
+synchronized characters come from WoW: Forever, so Hourstone 0.3.7 shows them as
+WoW: Forever in the game. It builds on 0.2.1, which shows Forever as its own client
+and keeps copied WTF folders from stopping the app, and on the Retail progress
+added in 0.2.0. GitHub packages are **unsigned**; Windows may warn about
 an unknown publisher or block the installer. The portable launcher passed an
 isolated startup check. End-to-end Dropbox, OneDrive and Proton Drive exchange
 between two PCs still needs practical validation. See the
@@ -18,7 +20,7 @@ between two PCs still needs practical validation. See the
 
 The separate Microsoft Store package **1.0.1.0** (product version 0.2.0) was
 resubmitted on 25 September 2026 and is awaiting certification. This GitHub
-release does not imply Store approval. The Store edition of 0.2.1 will be submitted
+release does not imply Store approval. The Store edition of 0.2.2 will be submitted
 separately and also requires certification. See the [Store status](docs/STORE.md).
 
 ![Hourstone Companion with sample characters](docs/assets/overview.png)
@@ -52,10 +54,13 @@ without protocol-4 support.
 There is no sync-group reset.
 
 WoW: Forever installations (client folder `_forever_`) appear as **WoW: Forever**.
-The synchronization contract keeps them in the Retail family, so the WoW addon
-lists these characters as Retail; the Companion's Retail progress view leaves them out.
-Other PCs show the label when both they and the Forever PC run Companion 0.2.1 or
-later; older Companions show Retail. Use Hourstone 0.3.5 or later on Forever.
+The synchronization contract keeps them in the Retail family; the Companion's Retail
+progress view leaves them out. Other PCs show the label when both they and the
+Forever PC run Companion 0.2.1 or later; older Companions show Retail. From Companion
+0.2.2, the data addon also names the Forever installations, so Hourstone 0.3.7 or
+later shows these characters as WoW: Forever in every client, while older Hourstone
+versions list them as Retail. A copied `WTF` folder keeps its original's source ID
+and counts as the client it was copied from. Use Hourstone 0.3.5 or later on Forever.
 
 ## Setup
 

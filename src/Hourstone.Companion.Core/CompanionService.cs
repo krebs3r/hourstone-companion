@@ -14,6 +14,7 @@ public sealed class CompanionService : IDisposable
     private IReadOnlyList<Observation> allCharacters = [];
     private IReadOnlyList<Observation> removedCharacters = [];
     private HashSet<string> foreverIdentities = new(StringComparer.Ordinal);
+    private HashSet<string> foreverSources = new(StringComparer.Ordinal);
     private IReadOnlyList<ProgressObservation> progress = [];
     private IReadOnlyList<ProgressObservation> rawProgress = [];
     private IReadOnlyList<DeviceStatus> devices = [];
@@ -47,8 +48,10 @@ public sealed class CompanionService : IDisposable
     public IReadOnlyList<DeviceStatus> GetDevices() { lock (gate) return devices.ToArray(); }
     public IReadOnlyList<Observation> GetCharacters() { lock (gate) return characters.ToArray(); }
     public IReadOnlyList<Observation> GetRemovedCharacters() { lock (gate) return removedCharacters.ToArray(); }
-    /// <summary>Display only: identities from this PC's WoW: Forever installations and from Forever sources that peers label in their client hints.</summary>
+    /// <summary>Display only: characters whose winning observation comes from a WoW: Forever source, the same rows the addon labels.</summary>
     public IReadOnlySet<string> GetForeverIdentities() { lock (gate) return foreverIdentities.ToHashSet(StringComparer.Ordinal); }
+    /// <summary>Source IDs of this PC's Forever installations and of the Forever sources that peers name in their client hints, without copies.</summary>
+    public IReadOnlySet<string> GetForeverSources() { lock (gate) return foreverSources.ToHashSet(StringComparer.Ordinal); }
     /// <summary>Display projection, including hidden characters; never used as a local contribution.</summary>
     public IReadOnlyList<ProgressObservation> GetProgress() { lock (gate) return progress.ToArray(); }
     public void SetCharacterRemoved(Observation observation, bool removed)
@@ -232,7 +235,7 @@ public sealed class CompanionService : IDisposable
                 if (!currentClients.Contains(client, StringComparer.OrdinalIgnoreCase) && !Directory.Exists(Path.Combine(client, "Interface", "AddOns", "Hourstone_Sync"))) continue;
                 var statuses = sourceStatuses.Where(s => StringComparer.OrdinalIgnoreCase.Equals(Path.GetFullPath(s.ClientDirectory), client)).ToArray();
                 var format = statuses.Length > 0 && statuses.All(s => s.SyncFormatVersion == 4) ? 4 : 3;
-                DataAddonWriter.Write(client, sources, allCharacters, VisibilityFor(allCharacters), rawProgress, format);
+                DataAddonWriter.Write(client, sources, allCharacters, VisibilityFor(allCharacters), rawProgress, format, foreverSources);
                 if (format == 3 && selected.Any(s => s.Flavor == "retail" && !s.IsForever && StringComparer.OrdinalIgnoreCase.Equals(Path.GetFullPath(s.ClientDirectory), client)) && rawProgress.Count > 0)
                     issues.Add(new SyncIssue("progress_addon_update_required", $"Der Fortschritt ist im Companion verfügbar. Für den Rückimport nach WoW benötigt diese Installation Hourstone {AddonReadiness.ProgressAddonVersion} mit Sync-Protokoll 4."));
             }
@@ -400,15 +403,23 @@ public sealed class CompanionService : IDisposable
         var bySource = selected.Select(s => (Source: s, Observations: store.ReadSource(s.SourceId))).ToList(); var own = bySource.SelectMany(x => x.Observations).ToList();
         var groupId = configuration.GroupId ?? Guid.Empty.ToString("D"); var cached = store.ReadSnapshots(groupId);
         var remote = cached.Where(s => s.Snapshot.DeviceId != configuration.DeviceId).ToArray();
-        // A peer's hint only labels that peer's own sources.
+        // A peer's hint only labels that peer's own sources. A source ID that an installation uses outside Forever, or that a
+        // peer without a hint publishes, belongs to a copied WTF folder: as in SourceDiscovery.AddDiscovered, the Forever copy yields.
         var hints = StoredClientHints(groupId).ToDictionary(item => item.DeviceId, item => item.ForeverSources.ToHashSet(StringComparer.Ordinal), StringComparer.OrdinalIgnoreCase);
-        foreverIdentities = bySource.Where(x => x.Source.IsForever).SelectMany(x => x.Observations)
-            .Concat(remote.SelectMany(s => hints.TryGetValue(s.Snapshot.DeviceId, out var forever) ? s.Snapshot.Observations.Where(o => forever.Contains(o.SourceId)) : []))
-            .Select(ObservationRules.Identity).ToHashSet(StringComparer.Ordinal);
+        var forever = selected.Where(s => s.IsForever).Select(s => s.SourceId).ToHashSet(StringComparer.Ordinal);
+        var elsewhere = selected.Where(s => !s.IsForever).Select(s => s.SourceId).ToHashSet(StringComparer.Ordinal);
+        foreach (var peer in remote)
+        {
+            var listed = hints.GetValueOrDefault(peer.Snapshot.DeviceId);
+            foreach (var observation in peer.Snapshot.Observations) (listed?.Contains(observation.SourceId) == true ? forever : elsewhere).Add(observation.SourceId);
+        }
+        forever.ExceptWith(elsewhere); foreverSources = forever;
         var visibility = VisibilityRules.Merge(store.ReadVisibility().Concat(cached.SelectMany(item => item.Snapshot.Visibility ?? [])));
         store.WriteVisibility(visibility);
         var hidden = visibility.Where(VisibilityRules.IsRemoved).Select(VisibilityRules.Identity).ToHashSet(StringComparer.Ordinal);
         allCharacters = ObservationRules.Merge(own.Concat(remote.SelectMany(s => s.Snapshot.Observations)));
+        // The playtime winner's source decides, the rule the addon applies to the generated foreverSources list.
+        foreverIdentities = allCharacters.Where(item => item.Flavor == "retail" && forever.Contains(item.SourceId)).Select(ObservationRules.Identity).ToHashSet(StringComparer.Ordinal);
         var identities = allCharacters.Select(ObservationRules.Identity).ToHashSet(StringComparer.Ordinal);
         rawProgress = ProgressRules.MergeSources(selected.SelectMany(s => store.ReadSourceProgress(s.SourceId))
             .Concat(remote.SelectMany(s => s.Snapshot.ProgressObservations ?? []))).Where(item => identities.Contains(ProgressRules.Identity(item))).ToArray();

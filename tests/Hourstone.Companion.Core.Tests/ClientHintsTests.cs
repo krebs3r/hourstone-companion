@@ -3,6 +3,7 @@ using Xunit;
 
 namespace Hourstone.Companion.Core.Tests;
 
+[Collection(DatabaseCollection.Name)]
 public sealed class ClientHintsTests : IDisposable
 {
     private const string Group = "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa", Device = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
@@ -78,14 +79,17 @@ public sealed class ClientHintsTests : IDisposable
         Assert.Contains(retail.GetCharacters(), c => c.Guid == "Player-1-AA"); Assert.Empty(retail.GetForeverIdentities());
     }
     [Fact]
-    public async Task APeerHintOnlyLabelsThatPeersOwnSources()
+    public async Task APeerHintNeverLabelsAnotherClientsUseOfTheSameSource()
     {
         var forever = Service("A"); var retail = Service("B"); var other = Service("C");
         Configure(forever, "A", "_forever_", "Player-1-AA"); Configure(retail, "B", "_retail_", "Player-1-BB");
-        Configure(other, "C", "_retail_", "Player-1-CC", "hs-A");
-        foreach (var device in new[] { forever, retail, other }) await device.JoinSyncFolderAsync(Cloud);
-        await SyncAll(forever, retail, other);
+        await forever.JoinSyncFolderAsync(Cloud); await retail.JoinSyncFolderAsync(Cloud);
+        await SyncAll(forever, retail);
         Assert.Equal([Identity(retail, "Player-1-AA")], retail.GetForeverIdentities());
+        // C's Retail installation uses A's source ID: a copied WTF folder, so the Forever copy yields, as in SourceDiscovery.AddDiscovered.
+        Configure(other, "C", "_retail_", "Player-1-CC", "hs-A"); await other.JoinSyncFolderAsync(Cloud);
+        await SyncAll(forever, retail, other);
+        Assert.Contains(retail.GetCharacters(), c => c.Guid == "Player-1-CC"); Assert.Empty(retail.GetForeverIdentities());
     }
     [Fact]
     public async Task DuplicateStoredHintsNeverStopTheServiceFromStarting()

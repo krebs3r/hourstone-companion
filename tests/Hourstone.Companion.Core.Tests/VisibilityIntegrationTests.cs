@@ -5,6 +5,7 @@ using Xunit;
 
 namespace Hourstone.Companion.Core.Tests;
 
+[Collection(DatabaseCollection.Name)]
 public sealed class VisibilityIntegrationTests : IDisposable
 {
     private readonly string root = Path.Combine(Path.GetTempPath(), "Hourstone.Visibility.Tests-" + Guid.NewGuid().ToString("N"));

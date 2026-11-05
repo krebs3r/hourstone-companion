@@ -28,7 +28,7 @@ Ein zusätzliches Hourstone-Konto ist nicht erforderlich. Die App liest die gesp
 
 Windows 11 auf einem x64-PC. World of Warcraft und das Hourstone-Addon werden separat benötigt, um eigene Spieldaten zu erfassen. Unterstützt werden Retail, WoW: Forever, Mists Classic, TBC Anniversary und Classic Era; die Fortschrittsansicht ist für Retail bestimmt und umfasst WoW: Forever nicht.
 
-Spielzeit, Gilden und Sichtbarkeit benötigen Hourstone 0.2.2 oder neuer. Lokale Retail-Fortschrittsdaten sind ab Addon 0.3.1 lesbar; der Fortschrittsabgleich zurück ins Spiel benötigt Addon 0.3.2 mit Protokoll-4-Unterstützung. Für WoW: Forever Hourstone 0.3.5 oder neuer verwenden. Für den neuen Abgleich zwischen PCs müssen alle beteiligten Companions auf Version 0.2.0 oder neuer stehen. Das Addon wird separat aktualisiert.
+Spielzeit, Gilden und Sichtbarkeit benötigen Hourstone 0.2.2 oder neuer. Lokale Retail-Fortschrittsdaten sind ab Addon 0.3.1 lesbar; der Fortschrittsabgleich zurück ins Spiel benötigt Addon 0.3.2 mit Protokoll-4-Unterstützung. Für WoW: Forever Hourstone 0.3.5 oder neuer verwenden; ab Hourstone 0.3.7 erscheinen synchronisierte Forever-Charaktere auch im Spiel als WoW: Forever. Für den neuen Abgleich zwischen PCs müssen alle beteiligten Companions auf Version 0.2.0 oder neuer stehen. Das Addon wird separat aktualisiert.
 
 Für den optionalen Austausch muss der gewählte Sync-Ordner auf allen PCs dauerhaft lokal verfügbar sein. Einrichtung, Konto und mögliche Kosten eines externen Synchronisierungsdienstes richten sich nach dessen Angebot.
 

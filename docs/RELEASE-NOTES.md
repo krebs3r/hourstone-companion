@@ -1,70 +1,41 @@
-# Hourstone Companion 0.2.1
+# Hourstone Companion 0.2.2
 
 Windows 11 x64 · .NET enthalten / .NET included
 
-- [Windows-Installer herunterladen / Download Windows installer](https://github.com/krebs3r/hourstone-companion/releases/download/v0.2.1/HourstoneCompanion-win-Setup.exe)
-- [Portable-Ausgabe herunterladen / Download portable edition](https://github.com/krebs3r/hourstone-companion/releases/download/v0.2.1/HourstoneCompanion-win-Portable.zip)
-- [SHA-256-Prüfsummen / SHA-256 checksums](https://github.com/krebs3r/hourstone-companion/releases/download/v0.2.1/SHA256SUMS)
+- [Windows-Installer herunterladen / Download Windows installer](https://github.com/krebs3r/hourstone-companion/releases/download/v0.2.2/HourstoneCompanion-win-Setup.exe)
+- [Portable-Ausgabe herunterladen / Download portable edition](https://github.com/krebs3r/hourstone-companion/releases/download/v0.2.2/HourstoneCompanion-win-Portable.zip)
+- [SHA-256-Prüfsummen / SHA-256 checksums](https://github.com/krebs3r/hourstone-companion/releases/download/v0.2.2/SHA256SUMS)
 
 ## Deutsch
 
-**Vor dem Update:** 0.2.1 ändert weder Sync-Protokoll 4 noch Datenbankschema 2
-noch die Einstellungen. PCs mit 0.2.0 und 0.2.1 gleichen weiter miteinander ab und
-müssen nicht gemeinsam aktualisiert werden; Companions mit 0.2.0 zeigen
-Forever-Charaktere weiterhin als Retail. Nach dem Update WoW einmal vollständig
-neu starten, damit es das Datenaddon mit den neuen Interface-Angaben erkennt.
+**Vor dem Update:** 0.2.2 ändert weder Sync-Protokoll 4 noch Datenbankschema 2
+noch die Einstellungen. PCs mit 0.2.0, 0.2.1 und 0.2.2 gleichen weiter miteinander
+ab und müssen nicht gemeinsam aktualisiert werden.
 
-### Neu und behoben
+### Neu und geändert
 
-- **WoW: Forever** erscheint als eigener Client. Installationen im Clientordner
-  `_forever_` (neben `_retail_`, mit derselben `Wow.exe`) heißen auf den
-  Clientkarten, in der Charakterliste, im Clientfilter und in der Diagnose
-  „WoW: Forever“. Forever-Charaktere stehen nicht mehr in der
-  Retail-Fortschrittsansicht. Im Sync-Protokoll 4 bleibt Forever ohne
-  Formatänderung Teil der Retail-Familie; das Addon im Spiel führt diese
-  Charaktere deshalb weiter als Retail.
-- Andere PCs mit 0.2.1 übernehmen die Forever-Bezeichnung über eine kleine
-  Hinweisdatei `<Geräte-ID>.clients` im Sync-Ordner
-  ([Beschreibung](https://github.com/krebs3r/hourstone-companion/blob/v0.2.1/docs/sync-client-hints.md)).
-  Ältere Companions ignorieren sie und zeigen diese Charaktere weiter als Retail.
-- Das Datenaddon **Hourstone_Sync** gibt die Interfaces 120105, 50504, 20506,
-  11509 und 16001 an. WoW 12.1.5 und WoW: Forever führen es nicht mehr als
-  veraltet. Das in den Hinweisen zu Hourstone 0.3.4 empfohlene **Laden veralteter
-  AddOns** ist dafür nicht mehr nötig.
-- Ein kopierter WTF-Ordner, also zwei Installationen mit derselben
-  Hourstone-Daten-ID, beendet die App nicht mehr mit „Hourstone Companion konnte
-  nicht starten“. Die Kopie wird nicht gelesen, und ein Hinweis erklärt den Grund.
-  Eine Forever-Kopie tritt hinter den anderen Client zurück, auch wenn die
-  Forever-Installation zuvor hinzugefügt wurde.
-- Charaktere, die eine ältere Hourstone-Version für einen dem Companion
-  unbekannten Client gespeichert hat, fehlen nicht mehr kommentarlos. Ein Beispiel
-  sind Beta-Charaktere aus WoW: Forever, die Hourstone 0.3.3 als „project-18“
-  abgelegt hat. Ein Hinweis führt zur Seite Clients; Clientkarte und Diagnose
-  nennen beide Abhilfen: Bei
-  Beta-Charakteren WoW schließen und `SavedVariables\Hourstone.lua` aus diesem
-  Client herausverschieben; andernfalls Hourstone aktualisieren, sich einmal
-  einloggen und danach ausloggen oder `/reload` ausführen.
-- Die Retail-Fortschrittstabelle füllt ein maximiertes Fenster. Bei geöffneten
-  Details oder in kleinen Fenstern scrollt die Seite, und die Tabelle behält ihre
-  Zeilen.
+- **WoW: Forever auch im Spiel:** Das Datenaddon **Hourstone_Sync** nennt jetzt die
+  Forever-Installationen, die eigenen und die, die andere PCs über ihre
+  Client-Hinweise melden. Hourstone 0.3.7 zeigt damit synchronisierte
+  Forever-Charaktere anderer Accounts und PCs in jedem Client als „WoW: Forever“,
+  auch in Forever selbst, und bietet dort den Clientfilter WoW: Forever an. Ältere
+  Hourstone-Versionen ignorieren die Liste und führen diese Charaktere weiter als
+  Retail. Ohne Forever-Installation bleibt das Datenaddon Byte für Byte wie bei
+  0.2.1 ([Beschreibung](https://github.com/krebs3r/hourstone-companion/blob/v0.2.2/docs/sync-protocol-v4-forever.md)).
+- **Kopierte WTF-Ordner:** Verwendet ein anderer Client dieselbe Hourstone-Daten-ID
+  wie eine Forever-Installation, gilt die Forever-Installation als Kopie und tritt
+  wie beim Hinzufügen von Installationen hinter den anderen Client zurück. Ihre
+  Charaktere werden dann weder im Companion noch im Spiel als Forever
+  gekennzeichnet; 0.2.1 zeigte sie auf anderen PCs trotzdem als Forever an.
+- Die Charakterliste kennzeichnet einen Charakter nach der Quelle seiner gültigen
+  Spielzeitbeobachtung und zeigt damit dieselben Forever-Charaktere wie das Addon.
 
-**WoW: Forever:** Forever startet am 5. November 2026 um 0:00 Uhr MEZ
-(4. November, 23:00 UTC). Beta-Charaktere werden nicht ins Live-Spiel übernommen.
-Wer den WTF-Ordner der Beta nach `_forever_` kopiert hat, verschiebt vor dem
-ersten Live-Login bei geschlossenem WoW die Datei `Hourstone.lua` aus
-`_forever_\WTF\Account\*\SavedVariables`, statt sie zu löschen. Sonst bleiben die
-Beta-Charaktere in der Liste.
-
-**Addon:** Zeitgleich erscheint Hourstone 0.3.5. Auf Forever ordnet es jeden
-Charakter der Retail-Familie zu, holt Charaktere, die eine frühere Version unter
-einem unbekannten Client wie „project-18“ abgelegt hat, ohne doppelte Spielzeit
-zu Retail zurück und speichert nie einen leeren Realm oder Namen. Der Companion
-lehnt einen leeren Realm ab; ein solcher Eintrag würde sonst den ganzen Account im
-Companion blockieren. Für Forever deshalb Addon 0.3.5 verwenden. Ansonsten gelten
-die bisherigen Anforderungen: Spielzeit, Gilden und Sichtbarkeit ab 0.2.2, lokaler
-Retail-Fortschritt ab 0.3.1, der Rückweg ins Spiel ab 0.3.2 mit
-Protokoll-4-Kennung.
-[Addon 0.3.5 herunterladen](https://github.com/krebs3r/hourstone-azeroth-hours/releases/tag/v0.3.5).
+**Addon:** [Hourstone 0.3.7](https://github.com/krebs3r/hourstone-azeroth-hours/releases/tag/v0.3.7)
+liest die Liste und erscheint separat. Für selbst erfasste Charaktere entscheidet
+dort weiter die Kennzeichnung des eigenen Accounts. Mit Hourstone 0.3.6 oder älter
+ändert sich im Spiel nichts. Ansonsten gelten die bisherigen Anforderungen: Forever
+ab 0.3.5, Spielzeit, Gilden und Sichtbarkeit ab 0.2.2, lokaler Retail-Fortschritt
+ab 0.3.1, der Rückweg ins Spiel ab 0.3.2 mit Protokoll-4-Kennung.
 
 **Installation und Update:** Installierte Kopien und vollständig entpackte
 Portable-Ausgaben aktualisieren sich automatisch über GitHub. Das Update wartet
@@ -77,71 +48,49 @@ entpacken und über den enthaltenen Rootlauncher starten.
 
 **Store-Ausgabe:** Die Microsoft-Store-Ausgabe wird separat eingereicht und
 benötigt eine Zertifizierung. Dieses GitHub-Release bedeutet keine
-Store-Veröffentlichung; Store-Kopien erhalten 0.2.1 erst nach der Freigabe über
+Store-Veröffentlichung; Store-Kopien erhalten 0.2.2 erst nach der Freigabe über
 den Microsoft Store.
 
-**Validierung:** 364 .NET-Tests bestanden, darunter neue Tests für die
-Forever-Erkennung, Client-Hinweise, kopierte WTF-Ordner und Charaktere unbekannter
-Clients. Die Release-Pipeline baut frische Pakete und führt vor der
-Veröffentlichung diese Tests erneut aus, dazu die Python-Prüfungen, die erweiterten
-Render- und Paketprüfungen und den isolierten Portable-Start. Der Live-Client von
-WoW: Forever wurde noch nicht getestet; Interface 16001 ist nur auf Beta- und
-Testbuilds von Forever bestätigt. Echter Austausch über Dropbox, OneDrive oder
-Proton Drive zwischen zwei PCs, einschließlich der Client-Hinweise, und das
-automatische Update von 0.2.0 auf 0.2.1 sind weiterhin nicht praktisch geprüft.
+**Validierung:** 372 .NET-Tests bestanden, darunter neue Tests für die
+Forever-Liste im Datenaddon, kopierte WTF-Ordner auf anderen PCs und mit dem Addon
+gemeinsame Fixtures, einschließlich der erzeugten Daten Byte für Byte. Die
+Release-Pipeline baut frische Pakete und führt vor der Veröffentlichung diese Tests
+erneut aus, dazu die Python-Prüfungen, die erweiterten Render- und Paketprüfungen und
+den isolierten Portable-Start. Die Anzeige im Spiel mit Hourstone 0.3.7, echter
+Austausch über Dropbox, OneDrive oder Proton Drive zwischen zwei PCs und das
+automatische Update von 0.2.1 auf 0.2.2 sind noch nicht praktisch geprüft.
 
 ## English
 
-**Before updating:** 0.2.1 does not change sync protocol 4, database schema 2 or
-settings. PCs running 0.2.0 and 0.2.1 keep exchanging data and do not need to
-be upgraded together; Companions running 0.2.0 continue to show Forever
-characters as Retail. After updating, restart WoW completely once so it picks up
-the data addon's new interface list.
+**Before updating:** 0.2.2 does not change sync protocol 4, database schema 2 or
+settings. PCs running 0.2.0, 0.2.1 and 0.2.2 keep exchanging data and do not need
+to be upgraded together.
 
-### New and fixed
+### New and changed
 
-- **WoW: Forever** appears as its own client. Installations in the `_forever_`
-  client folder (next to `_retail_`, with the same `Wow.exe`) are shown as
-  “WoW: Forever” on client cards, in the character list, the client filter and
-  diagnostics. Forever characters are no longer listed in the Retail progress
-  view. In sync protocol 4, Forever stays in the Retail family without a format
-  change, so the in-game addon still lists these characters as Retail.
-- Other PCs running 0.2.1 learn the Forever label from a small `<deviceId>.clients`
-  hint file in the sync folder
-  ([description](https://github.com/krebs3r/hourstone-companion/blob/v0.2.1/docs/sync-client-hints.md)).
-  Older Companions ignore it and keep showing these characters as Retail.
-- The **Hourstone_Sync** data addon declares interfaces 120105, 50504, 20506,
-  11509 and 16001. WoW 12.1.5 and WoW: Forever no longer list it as out of date,
-  so the **Load out of date AddOns** setting recommended in the Hourstone 0.3.4
-  notes is no longer needed for it.
-- A copied WTF folder, meaning two installations with the same Hourstone data ID,
-  no longer closes the app with “Could not start”. The copy is not read and a
-  notice explains why. A Forever copy yields to the other client, even if the
-  Forever installation was added first.
-- Characters that an older Hourstone saved for a client the Companion does not
-  know are no longer silently left out. One example is WoW: Forever beta
-  characters that Hourstone 0.3.3 saved as “project-18”. A notice points to the
-  Clients page; the Clients card and diagnostics explain both remedies: for beta characters, close WoW and
-  move `SavedVariables\Hourstone.lua` out of this client; otherwise update
-  Hourstone, log in once, then log out or use `/reload`.
-- The Retail progress table now fills a maximized window. With details open or in
-  small windows, the page scrolls and the table keeps its rows.
+- **WoW: Forever in the game, too:** The **Hourstone_Sync** data addon now names the
+  Forever installations, this PC's own and those that other PCs report through
+  their client hints. Hourstone 0.3.7 uses it to show synchronized Forever
+  characters of other accounts and PCs as “WoW: Forever” in every client, Forever
+  included, and offers the WoW: Forever client filter there. Older Hourstone
+  versions ignore the list and keep listing these characters as Retail. Without a
+  Forever installation, the data addon stays byte for byte as in 0.2.1
+  ([description](https://github.com/krebs3r/hourstone-companion/blob/v0.2.2/docs/sync-protocol-v4-forever.md)).
+- **Copied WTF folders:** When another client uses the same Hourstone data ID as a
+  Forever installation, the Forever installation counts as the copy and yields to
+  the other client, as it does when installations are added. Its characters are
+  then labelled Forever neither in the Companion nor in the game; 0.2.1 still
+  labelled them Forever on other PCs.
+- The character list labels a character by the source of its winning playtime
+  observation and so shows the same Forever characters as the addon.
 
-**WoW: Forever:** Forever goes live on 4 November 2026 at 23:00 UTC (00:00 CET on
-5 November). Beta characters do not carry over to live. If you copied the beta's
-WTF folder into `_forever_`, close WoW and move `Hourstone.lua` out of
-`_forever_\WTF\Account\*\SavedVariables` before your first live login, rather than
-deleting it. Otherwise the beta characters stay in the list.
-
-**Addon:** Hourstone 0.3.5 is released alongside. On Forever it assigns every
-character to the Retail family, returns characters that an earlier version filed
-under an unknown client such as “project-18” to Retail without counting playtime
-twice, and never saves an empty realm or name. The Companion rejects an empty
-realm, which would otherwise block the whole account in the Companion. Use addon
-0.3.5 on Forever. All other requirements are unchanged: playtime, guilds and
-visibility require 0.2.2 or later, local Retail progress 0.3.1 or later, and
-sending progress back into WoW at least 0.3.2 with its protocol-4 capability.
-[Download addon 0.3.5](https://github.com/krebs3r/hourstone-azeroth-hours/releases/tag/v0.3.5).
+**Addon:** [Hourstone 0.3.7](https://github.com/krebs3r/hourstone-azeroth-hours/releases/tag/v0.3.7)
+reads the list and is released separately. For characters an account recorded
+itself, that account's own label still decides there. With Hourstone 0.3.6 or
+earlier, nothing changes in the game. All other requirements are unchanged:
+Forever needs 0.3.5 or later; playtime, guilds and visibility 0.2.2 or later; local
+Retail progress 0.3.1 or later; and sending progress back into WoW at least 0.3.2
+with its protocol-4 capability.
 
 **Installation and updates:** Installed copies and fully extracted portable
 packages update automatically from GitHub. Among other conditions, the update
@@ -151,16 +100,16 @@ waits until WoW is closed; **Check for app updates** checks immediately.
 installation. Windows Code Integrity blocked the installer during an earlier
 local setup test. Fully extract the portable ZIP and start its root launcher.
 
-**Store edition:** The Microsoft Store edition of 0.2.1 will be submitted
+**Store edition:** The Microsoft Store edition of 0.2.2 will be submitted
 separately and requires certification. This GitHub release does not establish Store
-availability; Store copies receive 0.2.1 through Microsoft Store only after
+availability; Store copies receive 0.2.2 through Microsoft Store only after
 approval.
 
-**Validation:** 364 .NET tests passed, including new tests for Forever detection,
-client hints, copied WTF folders and characters of unknown clients. The release
-pipeline builds fresh packages and, before publication, runs these tests again
-along with the Python checks, extended render and package checks and the isolated
-portable startup. The live WoW: Forever client has not been tested yet; interface
-16001 is confirmed only on Forever beta and test builds. Real two-PC exchange
-through Dropbox, OneDrive or Proton Drive, including client hints, and the
-automatic update from 0.2.0 have still not been practically verified.
+**Validation:** 372 .NET tests passed, including new tests for the Forever list in
+the data addon, copied WTF folders on other PCs and fixtures shared with the addon,
+including the generated data byte for byte. The release pipeline builds fresh
+packages and, before publication, runs these tests again along with the Python
+checks, extended render and package checks and the isolated portable startup. The
+in-game labels with Hourstone 0.3.7, real two-PC exchange through Dropbox, OneDrive
+or Proton Drive, and the automatic update from 0.2.1 have not been practically
+verified yet.

@@ -25,7 +25,7 @@ manual Release workflow with `allowUnsigned: true`. Package validation, privacy
 checks and release-asset integrity checks still apply. Release notes must clearly
 state that the packages are unsigned and list material validation gaps.
 
-The 0.2.1 early release uses this unsigned path. Two-device provider testing remains
+The 0.2.1 and 0.2.2 early releases use this unsigned path. Two-device provider testing remains
 outstanding; it is not reported as passed. Configure release-environment protection
 rules when establishing the signed distribution process.
 
@@ -71,6 +71,8 @@ be provisioned separately; the repository does not contain one.
   CurseForge; when moderation is pending, explicitly link the compatible addon
   GitHub release in the setup instructions and release notes.
 - Exercise Retail, WoW: Forever, Mists Classic, TBC Anniversary and Classic Era with selected accounts.
+- With Hourstone 0.3.7, check that a Forever character of another account or PC shows as
+  WoW: Forever in the game, in Retail and in Forever.
 - With a WoW: Forever installation, check its label on another PC through client hints
   and that a copied WTF folder is skipped with a notice instead of stopping the app.
 - Confirm the first data-addon installation requires a WoW restart and subsequent data
