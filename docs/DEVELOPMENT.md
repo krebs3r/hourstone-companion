@@ -2,7 +2,7 @@
 
 The solution contains a WPF application, a platform-independent synchronization
 core and automated tests. Use Windows 11 x64 and the .NET SDK pinned by `global.json`.
-The current product version is **0.2.1**, a patch release on top of 0.2.0.
+The current product version is **0.2.2**, a patch release on top of 0.2.1.
 GitHub releases use the direct installer/portable channel; Store certification
 is tracked separately in [STORE.md](STORE.md).
 
