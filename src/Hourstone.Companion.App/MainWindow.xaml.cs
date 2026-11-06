@@ -41,7 +41,8 @@ public partial class MainWindow : Window
     bool savingSettings;
     bool loadingStoreSettings;
     DateTimeOffset lastScan = DateTimeOffset.MinValue, changed = DateTimeOffset.MaxValue;
-    bool quit, quitPending, busy, modalOpen, syncNotice;
+    bool quit, quitPending, busy, modalOpen, syncNotice, updateNotice, updateInstalling;
+    string? updatePreviewVersion;
     public DateTimeOffset LastInteraction { get; private set; } = DateTimeOffset.UtcNow;
     public MainWindow(bool demo, bool render)
     {
@@ -90,12 +91,14 @@ public partial class MainWindow : Window
         menu.Items.Add("Hourstone Companion", null, (_, _) => Dispatcher.Invoke(ShowMain));
         menu.Items.Add(vm.Text("CheckNow"), null, (_, _) => Dispatcher.InvokeAsync(async () => await ScanAsync()));
         menu.Items.Add(vm.English ? "Quit" : "Beenden", null, (_, _) => Dispatcher.Invoke(Quit)); tray.ContextMenuStrip = menu; tray.DoubleClick += (_, _) => Dispatcher.Invoke(ShowMain);
+        tray.BalloonTipClicked += (_, _) => Dispatcher.Invoke(ShowMain);
         if (!AppRuntime.IsSmokeTest)
         {
             showSignal = new(false, EventResetMode.AutoReset, "Local\\HourstoneCompanion.Show");
             showWait = ThreadPool.RegisterWaitForSingleObject(showSignal, (_, _) => Dispatcher.InvokeAsync(ShowMain), null, Timeout.Infinite, false);
         }
         updater = AppDistribution.Current.IsStore || AppRuntime.IsSmokeTest ? null : new(this, Notify);
+        RefreshUpdateActions();
         AutostartChoice.IsEnabled = updater?.SupportsAutostart == true;
         AutostartChoice.ToolTip = vm.English ? "Available after installation." : "Nach Installation verfügbar.";
         if (updater?.SupportsAutostart == true) ApplyAutostart(preferences.Autostart);
@@ -129,6 +132,8 @@ public partial class MainWindow : Window
         if (CharacterGrid != null) { CharacterGrid.Columns[0].Header = vm.Text("CharacterHeader"); CharacterGrid.Columns[2].Header = vm.Text("TimeHeader"); CharacterGrid.Columns[3].Header = vm.Text("UpdatedHeader"); }
         if (AutostartChoice != null) AutostartChoice.ToolTip = english ? "Available after installation." : "Nach Installation verfügbar.";
         if (UpdateText != null) UpdateText.Text = UpdateCoordinator.LocalizeStatus(UpdateText.Text, english);
+        if (updateNotice && Notice.Visibility == Visibility.Visible && PendingUpdateVersion is { } readyVersion) NoticeText.Text = UpdateCoordinator.ReadyNotice(readyVersion, english);
+        RefreshUpdateActions();
         RefreshSources(); RefreshCloud();
         RefreshDistributionLabels();
         if (service != null && syncNotice && displayedSyncResult is { } displayedResult)
@@ -191,8 +196,32 @@ public partial class MainWindow : Window
     }
     void Notify(string text)
     {
-        syncNotice = false; NoticeSourceButton.Visibility = Visibility.Collapsed; NoticeText.Text = text; Notice.Visibility = Visibility.Visible;
+        syncNotice = updateNotice = false; NoticeSourceButton.Visibility = NoticeInstallButton.Visibility = Visibility.Collapsed; NoticeText.Text = text; Notice.Visibility = Visibility.Visible;
         if (!IsVisible && tray != null) { tray.BalloonTipTitle = "Hourstone Companion"; tray.BalloonTipText = text; tray.ShowBalloonTip(6000); }
+    }
+    /// <summary>Shows the update-ready notice with its Install now action; any later notice replaces both.</summary>
+    public void ShowUpdateReady()
+    {
+        if (PendingUpdateVersion is not { } version) return;
+        Notify(UpdateCoordinator.ReadyNotice(version, vm.English));
+        updateNotice = true; NoticeInstallButton.Visibility = Visibility.Visible; RefreshUpdateActions();
+    }
+    public string? PendingUpdateVersion => updatePreviewVersion ?? updater?.PendingVersion;
+    public void RefreshUpdateActions()
+    {
+        if (UpdatePendingText == null) return;
+        var version = PendingUpdateVersion;
+        UpdatePendingText.Text = version == null ? "" : string.Format(vm.Culture, vm.Text("UpdatePending"), version);
+        UpdatePendingText.Visibility = InstallUpdateButton.Visibility = version == null ? Visibility.Collapsed : Visibility.Visible;
+        UpdateText.Text = UpdateCoordinator.ClearStaleReady(UpdateText.Text, version != null);
+        if (version == null) { NoticeInstallButton.Visibility = Visibility.Collapsed; updateNotice = false; }
+        NoticeInstallButton.IsEnabled = InstallUpdateButton.IsEnabled = !updateInstalling && updater?.InstallRequested != true;
+    }
+    void InstallUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        if (demo || updater == null) return;
+        if (updater.InstallNow() is { } message) Notify(message);
+        RefreshUpdateActions();
     }
     void UpdateSyncNotice(SyncResult result)
     {
@@ -207,7 +236,7 @@ public partial class MainWindow : Window
         if (!announce && !syncNotice && Notice.Visibility == Visibility.Visible) return;
         var pending = result.LocalSourceStatuses.Count(status => status.Readiness != LocalSourceReadiness.Ready);
         var text = SyncIssuePresentation.Notice(result, vm.English)!;
-        NoticeText.Text = text; Notice.Visibility = Visibility.Visible;
+        NoticeText.Text = text; Notice.Visibility = Visibility.Visible; NoticeInstallButton.Visibility = Visibility.Collapsed; updateNotice = false;
         var sourceAction = pending > 0 || SyncIssuePresentation.OnlyUnsupportedClientRows(result);
         NoticeSourceButton.Visibility = sourceAction ? Visibility.Visible : Visibility.Collapsed; syncNotice = true;
         if (announce && !IsVisible && tray != null)
@@ -686,6 +715,15 @@ public partial class MainWindow : Window
         return service.LastResult.Success && service.LastResult.CompletedAt != DateTimeOffset.MinValue;
     }
     public bool CanApplyUpdate(DateTimeOffset noticeAt, bool wowRunning) => settingsDraft?.IsDirty != true && !savingSettings && UpdatePolicy.CanApply(busy, IsVisible, IsActive, modalOpen, LastInteraction, noticeAt, DateTimeOffset.UtcNow, wowRunning);
-    public void PrepareUpdate() { timer.Stop(); }
-    public void ResumeAfterUpdateFailure() => timer.Start();
+    public ManualInstallOutcome ManualInstall(bool checkBusy) => UpdatePolicy.ManualInstall(busy, savingSettings, settingsDraft?.IsDirty == true, modalOpen, checkBusy);
+    public void PrepareUpdate() { timer.Stop(); updateInstalling = true; RefreshUpdateActions(); }
+    public void ResumeAfterUpdateFailure() { timer.Start(); updateInstalling = false; RefreshUpdateActions(); }
+    public void SetUpdatePreview(string state)
+    {
+        if (!demo) throw new InvalidOperationException("Synthetic update previews are only available in preview mode.");
+        if (state != "ready") throw new ArgumentException("Unknown update preview state.", nameof(state));
+        var current = typeof(MainWindow).Assembly.GetName().Version!;
+        updatePreviewVersion = $"{current.Major}.{current.Minor}.{current.Build + 1}";
+        RefreshUpdateActions(); ShowUpdateReady();
+    }
 }

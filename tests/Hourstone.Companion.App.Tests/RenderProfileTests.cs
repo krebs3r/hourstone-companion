@@ -46,6 +46,31 @@ public sealed class RenderProfileTests
         Assert.False(profile.Selected);
     }
 
+    [Fact]
+    public void UpdateReadyPreviewIsAnExplicitSettingsScenario()
+    {
+        var profile = RenderProfile.Parse(["--page", "settings", "--update-state", "ready", "--english"]);
+        Assert.Equal("ready", profile.UpdateState);
+        Assert.Null(profile.StoreState); Assert.Null(profile.SyncState); Assert.Null(profile.ClientsState); Assert.False(profile.Selected);
+        Assert.Null(RenderProfile.Parse(["--page", "settings"]).UpdateState);
+        Assert.Equal("ready", RenderProfile.Parse(["--page", "settings", "--settings-draft", "--update-state", "ready"]).UpdateState);
+    }
+
+    [Theory]
+    [InlineData("--update-state", "ready")]
+    [InlineData("--page", "settings", "--update-state")]
+    [InlineData("--page", "settings", "--update-state", "--english")]
+    [InlineData("--page", "settings", "--update-state", "installing")]
+    [InlineData("--page", "overview", "--update-state", "ready")]
+    [InlineData("--page", "settings", "--update-state", "ready", "--store-state", "settings")]
+    [InlineData("--page", "settings", "--update-state", "ready", "--selected")]
+    [InlineData("--page", "settings", "--update-state", "ready", "--removed")]
+    [InlineData("--page", "settings", "--update-state", "ready", "--clients-state", "empty")]
+    [InlineData("--page", "settings", "--update-state", "ready", "--sync-state", "connected")]
+    [InlineData("--page", "settings", "--update-state", "ready", "--diagnostics-state", "cloud-file-not-local")]
+    public void UpdatePreviewRejectsIncompatibleProfiles(params string[] arguments) =>
+        Assert.Throws<ArgumentException>(() => RenderProfile.Parse(arguments));
+
     [Theory]
     [InlineData("--progress-details")]
     [InlineData("--store-state", "unknown")]

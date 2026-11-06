@@ -197,11 +197,14 @@ every 24 hours while running. No GitHub login is required; prereleases are exclu
 available update. Releases must contain the Velopack feed and update packages;
 a source commit, tag or standalone installer is not an update feed.
 
-After download, the app announces the update. It waits until WoW is closed, the
-window is inactive, at least 90 seconds have passed without input and at least
-30 seconds have passed since the notice. Open dialogs, synchronization, saving and
+After download, the app announces the update and its version. It waits until WoW is
+closed, the window is inactive, at least 90 seconds have passed without input and at
+least 30 seconds have passed since the notice. Open dialogs, synchronization, saving and
 unsaved settings prevent installation. The app restarts in the background, retaining
-its settings and data. Update errors leave local processing available.
+its settings and data. **Install now** in the notice or under Settings installs at once,
+even while WoW is running, and restarts the app visibly. It still refuses while settings
+are unsaved and waits for a running synchronization. A repeated check that finds the
+downloaded version keeps the existing notice. Update errors leave local processing available.
 
 Installed copies and fully extracted Velopack portable packages support updates.
 Unpackaged development builds do not. **The WoW addon is updated separately through

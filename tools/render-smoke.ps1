@@ -37,6 +37,7 @@ function Invoke-RenderCase([string]$Name, [string]$Theme, [double]$Scale, [int]$
     if ($syncStateIndex -ge 0 -and $report.checks -notcontains ('sync-' + $ExtraArguments[$syncStateIndex + 1] + '-explanations-accessible')) { throw "Synchronization explanation verification did not run: $Name" }
     if ($ExtraArguments -contains '--diagnostics-state' -and $report.checks -notcontains 'cloud-file-diagnostic-and-offline-action-visible') { throw "Cloud availability diagnostic verification did not run: $Name" }
     if ($ExtraArguments -contains '--caption-focus' -and $report.checks -notcontains 'caption-mouse-focus-without-border') { throw "Caption focus verification did not run: $Name" }
+    if ($ExtraArguments -contains '--update-state' -and $report.checks -notcontains 'update-ready-install-actions-visible') { throw "Update install verification did not run: $Name" }
     Write-Output "PASS render $Name ($($report.checks.Count) layout checks)"
 }
 foreach ($theme in $Themes) {
@@ -49,6 +50,7 @@ foreach ($theme in $Themes) {
     Invoke-RenderCase -Name "progress-details-$theme" -Theme $theme -Scale 1 -ExtraArguments @('--page', 'progress', '--progress-details')
     Invoke-RenderCase -Name "store-settings-$theme" -Theme $theme -Scale 1 -ExtraArguments @('--store-state', 'settings')
     Invoke-RenderCase -Name "store-import-$theme" -Theme $theme -Scale 1 -ExtraArguments @('--store-state', 'found')
+    Invoke-RenderCase -Name "update-ready-$theme" -Theme $theme -Scale 1 -ExtraArguments @('--page', 'settings', '--update-state', 'ready')
 }
 if ($Extended) {
     foreach ($theme in @('dark', 'light', 'system')) {
@@ -75,6 +77,9 @@ if ($Extended) {
         Invoke-RenderCase -Name "compact-$theme" -Theme $theme -Scale 1 -Width 960 -Height 600
         Invoke-RenderCase -Name "long-names-$theme" -Theme $theme -Scale 1 -Width 1100 -Height 760 -ExtraArguments @('--long-names', '--english')
         Invoke-RenderCase -Name "settings-draft-$theme" -Theme $theme -Scale 1 -Width 960 -Height 600 -ExtraArguments @('--page', 'settings', '--settings-draft')
+        Invoke-RenderCase -Name "update-ready-english-$theme" -Theme $theme -Scale 1 -ExtraArguments @('--page', 'settings', '--update-state', 'ready', '--english')
+        Invoke-RenderCase -Name "update-ready-compact-$theme" -Theme $theme -Scale 1 -Width 960 -Height 600 -ExtraArguments @('--page', 'settings', '--update-state', 'ready')
+        Invoke-RenderCase -Name "update-ready-compact-english-$theme" -Theme $theme -Scale 1 -Width 960 -Height 600 -ExtraArguments @('--page', 'settings', '--update-state', 'ready', '--english')
         Invoke-RenderCase -Name "cloud-diagnostics-$theme" -Theme $theme -Scale 1 -ExtraArguments @('--diagnostics-state', 'cloud-file-not-local')
         Invoke-RenderCase -Name "cloud-diagnostics-compact-$theme" -Theme $theme -Scale 1 -Width 960 -Height 600 -ExtraArguments @('--diagnostics-state', 'cloud-file-not-local', '--english')
         foreach ($caption in @('minimize', 'maximize', 'close')) {

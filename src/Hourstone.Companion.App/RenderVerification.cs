@@ -10,7 +10,7 @@ using System.Windows.Media;
 namespace Hourstone.Companion.App;
 
 /// <summary>Synthetic render options; never opens a source, provider folder or browser.</summary>
-public sealed record RenderProfile(string? ClientsState, bool Selected, int SelectionColumn, bool SelectionUnfocused, string? SyncState = null, bool FooterFocused = false, string? DiagnosticsState = null, string? CaptionFocus = null, string? StoreState = null, bool ProgressDetails = false)
+public sealed record RenderProfile(string? ClientsState, bool Selected, int SelectionColumn, bool SelectionUnfocused, string? SyncState = null, bool FooterFocused = false, string? DiagnosticsState = null, string? CaptionFocus = null, string? StoreState = null, bool ProgressDetails = false, string? UpdateState = null)
 {
     public static RenderProfile Parse(string[] arguments)
     {
@@ -55,7 +55,12 @@ public sealed record RenderProfile(string? ClientsState, bool Selected, int Sele
         if (progressDetails && Value("--page") != "progress") throw new ArgumentException("Progress details require the progress page.");
         if (storeState is not null && (progressDetails || selected || state is not null || syncState is not null || diagnosticsState is not null))
             throw new ArgumentException("Store previews require a separate view.");
-        return new(state, selected, column, unfocused, syncState, footerFocused, diagnosticsState, captionFocus, storeState, progressDetails);
+        var updateState = Value("--update-state");
+        if (updateState is not (null or "ready")) throw new ArgumentException("Unknown update preview state.");
+        if (updateState is not null && Value("--page") != "settings") throw new ArgumentException("Update previews require the settings page.");
+        if (updateState is not null && (storeState is not null || selected || state is not null || syncState is not null || diagnosticsState is not null))
+            throw new ArgumentException("Update previews require a separate view of the direct update channel.");
+        return new(state, selected, column, unfocused, syncState, footerFocused, diagnosticsState, captionFocus, storeState, progressDetails, updateState);
     }
 }
 
@@ -68,6 +73,7 @@ public static class RenderVerification
         if (profile.SyncState is not null) window.SetSyncPreview(profile.SyncState);
         if (profile.DiagnosticsState is not null) window.SetDiagnosticsPreview(profile.DiagnosticsState);
         if (profile.StoreState is not null) window.SetStorePreview(profile.StoreState);
+        if (profile.UpdateState is not null) window.SetUpdatePreview(profile.UpdateState);
         if (profile.ProgressDetails)
         {
             var progress = ((MainViewModel)window.DataContext).Progress;
@@ -239,6 +245,34 @@ public static class RenderVerification
                 Require(!Named<FrameworkElement>(window, "OverviewPage").IsVisible && !Named<RadioButton>(window, "OverviewNav").IsEnabled, "Store setup permits navigation into an uninitialized profile.");
             }
             checks.Add("store-" + profile.StoreState + "-channel-and-setup-gate");
+        }
+        if (profile.UpdateState is not null)
+        {
+            var version = window.PendingUpdateVersion;
+            var install = mainModel.Text("InstallNow");
+            Require(version is not null && Named<FrameworkElement>(window, "Notice").IsVisible, "Update preview has no pending version or banner.");
+            var notice = Named<TextBlock>(window, "NoticeText");
+            Require(notice.Text.Contains(version!, StringComparison.Ordinal) && notice.Text.Contains(install, StringComparison.Ordinal)
+                && notice.Text.Contains(UpdatePolicy.IdleSeconds.ToString(CultureInfo.InvariantCulture), StringComparison.Ordinal),
+                "Update banner must name the version, the idle time and the immediate install action.");
+            Require(!Named<Button>(window, "NoticeSourceButton").IsVisible, "Update banner must not offer the client action.");
+            VisibleBounds(window, notice);
+            var bannerButton = Named<Button>(window, "NoticeInstallButton");
+            Require(bannerButton.IsEnabled && bannerButton.Content as string == install, "Update banner needs an enabled Install now action.");
+            var bannerBounds = VisibleBounds(window, bannerButton);
+            Require(!bannerBounds.IntersectsWith(notice.TransformToAncestor(window.ChromeRoot).TransformBounds(new Rect(notice.RenderSize))), "Install now overlaps the update banner text.");
+            Require(Named<FrameworkElement>(window, "SettingsPage").IsVisible && Named<FrameworkElement>(window, "DirectUpdatesCard").IsVisible
+                && !Named<FrameworkElement>(window, "StoreUpdatesCard").IsVisible, "Update preview must show the direct update channel.");
+            var pendingText = Named<TextBlock>(window, "UpdatePendingText");
+            var check = Named<Button>(window, "CheckUpdateButton");
+            var settingsButton = Named<Button>(window, "InstallUpdateButton");
+            Require(pendingText.Text.Contains(version!, StringComparison.Ordinal) && pendingText.TextWrapping == TextWrapping.Wrap, "Settings must name the downloaded version.");
+            Require(settingsButton.IsEnabled && settingsButton.Content as string == install, "Settings need an enabled Install now action.");
+            pendingText.BringIntoView(); settingsButton.BringIntoView(); check.BringIntoView();
+            window.ChromeRoot.UpdateLayout();
+            VisibleBounds(window, pendingText);
+            Require(!VisibleBounds(window, check).IntersectsWith(VisibleBounds(window, settingsButton)), "Install now overlaps the update check.");
+            checks.Add("update-ready-install-actions-visible");
         }
 
         if (profile.Selected)
