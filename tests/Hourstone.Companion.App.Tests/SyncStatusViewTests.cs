@@ -61,6 +61,8 @@ public sealed class SyncStatusViewTests
     [InlineData("NoNewerVersion")]
     [InlineData("Ready")]
     [InlineData("Unavailable")]
+    [InlineData("SaveSettingsFirst")]
+    [InlineData("InstallAfterSync")]
     public void UpdateFeedbackCanChangeLanguageWithoutStartingAnotherCheck(string key)
     {
         var german = UpdateCoordinator.StatusMessage(key, false);
@@ -69,5 +71,19 @@ public sealed class SyncStatusViewTests
         Assert.Equal(english, UpdateCoordinator.LocalizeStatus(german, true));
         Assert.Equal(german, UpdateCoordinator.LocalizeStatus(english, false));
         Assert.Equal("", UpdateCoordinator.LocalizeStatus("", true));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void ReadyFeedbackDisappearsOnceNoUpdateIsPending(bool english)
+    {
+        var ready = UpdateCoordinator.StatusMessage("Ready", english);
+        Assert.Equal(ready, UpdateCoordinator.ClearStaleReady(ready, true));
+        Assert.Equal("", UpdateCoordinator.ClearStaleReady(ready, false));
+        Assert.Equal("", UpdateCoordinator.ClearStaleReady(UpdateCoordinator.StatusMessage("Ready", !english), false));
+        var other = UpdateCoordinator.StatusMessage("NoNewerVersion", english);
+        Assert.Equal(other, UpdateCoordinator.ClearStaleReady(other, false));
+        Assert.Equal("", UpdateCoordinator.ClearStaleReady("", false));
     }
 }

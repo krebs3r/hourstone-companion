@@ -53,6 +53,9 @@ German and English examples in normal and compact windows.
 `--caption-focus minimize|maximize|close` checks that ordinary focus leaves no
 outline inside a title-bar button; keyboard navigation retains its separate focus
 visual. Extended checks cover all three buttons in dark and light appearance.
+`--page settings --update-state ready` renders a downloaded direct-channel update
+with a synthetic version: banner and settings card must name it and show Install now
+unclipped. Extended checks add English and compact windows.
 
 Progress profiles cover the Retail table and character details, nine Vault slots,
 independent timestamps, unknown and stale values, English/German, compact windows
