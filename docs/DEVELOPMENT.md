@@ -2,7 +2,7 @@
 
 The solution contains a WPF application, a platform-independent synchronization
 core and automated tests. Use Windows 11 x64 and the .NET SDK pinned by `global.json`.
-The current product version is **0.2.2**, a patch release on top of 0.2.1.
+The current product version is **0.2.3**, a patch release on top of 0.2.2.
 GitHub releases use the direct installer/portable channel; Store certification
 is tracked separately in [STORE.md](STORE.md).
 
@@ -136,6 +136,11 @@ pinned like the other protocol files. `protocol4ForeverSourceCommit` identifies 
 addon commit that adds them, verified byte-for-byte against the vendored files, and
 `protocol4ForeverSourceVersion` names addon 0.3.7, which reads the list. Hourstone
 0.3.2 to 0.3.6 ignore the list.
+
+Companion 0.2.3 leaves protocol 4, database schema 2, the settings and the generated
+`Hourstone_Sync` data addon unchanged. It changes the update flow of the direct
+installer/portable channel; apart from that, clicking a notification-area balloon
+now opens the window in every edition.
 
 The five progress families use independent, deterministic whole-record merges.
 Raw storage and transport preserve source provenance; combined display values are
