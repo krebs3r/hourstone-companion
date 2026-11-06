@@ -8,19 +8,21 @@ Proton Drive folder.
 [Download Hourstone Companion for Windows](https://github.com/krebs3r/hourstone-companion/releases/latest)
 
 Choose the **Setup.exe** installer or fully extract the **Portable.zip** package.
-The .NET runtime is included. **Version 0.2.2** tells the Hourstone addon which
-synchronized characters come from WoW: Forever, so Hourstone 0.3.7 shows them as
-WoW: Forever in the game. It builds on 0.2.1, which shows Forever as its own client
-and keeps copied WTF folders from stopping the app, and on the Retail progress
-added in 0.2.0. GitHub packages are **unsigned**; Windows may warn about
+The .NET runtime is included. **Version 0.2.3** adds **Install now** for a
+downloaded app update and names its version and when it installs automatically.
+It builds on 0.2.2, which lets Hourstone 0.3.7 show synchronized WoW: Forever
+characters as WoW: Forever in the game, on 0.2.1, which shows Forever as its own
+client and keeps copied WTF folders from stopping the app, and on the Retail
+progress added in 0.2.0. GitHub packages are **unsigned**; Windows may warn about
 an unknown publisher or block the installer. The portable launcher passed an
 isolated startup check. End-to-end Dropbox, OneDrive and Proton Drive exchange
 between two PCs still needs practical validation. See the
-[release notes](docs/RELEASE-NOTES.md) for compatibility and validation limits.
+[release notes](docs/RELEASE-NOTES.md) for the update to 0.2.3, compatibility and
+validation limits.
 
 The separate Microsoft Store package **1.0.1.0** (product version 0.2.0) was
 resubmitted on 25 September 2026 and is awaiting certification. This GitHub
-release does not imply Store approval. The Store edition of 0.2.2 will be submitted
+release does not imply Store approval. The Store edition of 0.2.3 will be submitted
 separately and also requires certification. See the [Store status](docs/STORE.md).
 
 ![Hourstone Companion with sample characters](docs/assets/overview.png)
