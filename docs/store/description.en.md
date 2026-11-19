@@ -6,7 +6,7 @@ View your WoW characters' playtime and Retail progress, with optional synchroniz
 
 ## Description
 
-Hourstone Companion adds a Windows overview to the separate “Hourstone – Azeroth Hours” WoW addon.
+Hourstone Companion adds a Windows overview to the separate “Hourstone – Azeroth Playtime Tracker” WoW addon.
 
 Compare saved playtime, search for characters or guilds, and filter by realm and WoW client. For Retail, see your saved keystone, weekly best and all nine Great Vault slots. Character details distinguish unknown, confirmed-empty and outdated values and show when progress was recorded.
 

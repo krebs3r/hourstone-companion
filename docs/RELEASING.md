@@ -25,7 +25,7 @@ manual Release workflow with `allowUnsigned: true`. Package validation, privacy
 checks and release-asset integrity checks still apply. Release notes must clearly
 state that the packages are unsigned and list material validation gaps.
 
-The 0.2.1 and 0.2.2 early releases use this unsigned path. Two-device provider testing remains
+The 0.2.1, 0.2.2 and 0.2.3 early releases use this unsigned path. Two-device provider testing remains
 outstanding; it is not reported as passed. Configure release-environment protection
 rules when establishing the signed distribution process.
 
@@ -78,6 +78,9 @@ be provisioned separately; the repository does not contain one.
 - Confirm the first data-addon installation requires a WoW restart and subsequent data
   refreshes load on login/reload without modifying SavedVariables.
 - Test an update from the previous signed release, both with WoW running and closed.
+- From 0.2.3 on, use Install now from the update notice and from Settings: with WoW
+  running, during a sync and with unsaved settings, then check the visible restart.
+  Confirm that a repeated check for app updates keeps the existing notice.
 - Verify the release notes accurately distinguish automated checks from practical checks.
 
 The checklist tracks coverage; it does not imply that each item has passed.
