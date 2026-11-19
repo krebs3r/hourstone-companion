@@ -10,7 +10,7 @@ The previous submitted package and portal notes are archived under `artifacts/ar
 
 ## Purpose and access
 
-Hourstone Companion displays saved character playtime and Retail progress from the separately installed “Hourstone – Azeroth Hours” WoW addon. It can exchange observations between the user's own PCs through a folder managed by a file synchronization service. There is no Hourstone account, hosted sync server, paid unlock, test login or developer-provided credential. The application opens without WoW or a cloud service. Actual collection of a user's game data requires WoW and the addon; the synthetic test below exercises the normal file-reading and display path without a game account.
+Hourstone Companion displays saved character playtime and Retail progress from the separately installed “Hourstone – Azeroth Playtime Tracker” WoW addon. It can exchange observations between the user's own PCs through a folder managed by a file synchronization service. There is no Hourstone account, hosted sync server, paid unlock, test login or developer-provided credential. The application opens without WoW or a cloud service. Actual collection of a user's game data requires WoW and the addon; the synthetic test below exercises the normal file-reading and display path without a game account.
 
 On first Store launch, complete the setup screen before normal synchronization starts. With no prior direct-edition profile, choose a fresh setup; optional startup can remain off. With an existing profile, the app offers transfer or fresh setup. A running direct copy must be closed through its notification-area **Quit / Beenden** action before handover proceeds.
 

@@ -1,6 +1,6 @@
 # Hourstone Companion
 
-A Windows companion for [Hourstone – Azeroth Hours](https://github.com/krebs3r/hourstone-azeroth-hours).
+A Windows companion for [Hourstone – Azeroth Playtime Tracker](https://github.com/krebs3r/hourstone-azeroth-hours).
 View saved character playtime across supported WoW clients and Retail progress,
 and synchronize your own PCs through a locally available Dropbox, OneDrive or
 Proton Drive folder.

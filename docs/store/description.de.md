@@ -6,7 +6,7 @@ Spielzeit und Retail-Fortschritt deiner WoW-Charaktere im Blick – mit optional
 
 ## Beschreibung
 
-Hourstone Companion ergänzt das separate WoW-Addon „Hourstone – Azeroth Hours“ um eine Windows-Übersicht deiner gespeicherten Charakterdaten.
+Hourstone Companion ergänzt das separate WoW-Addon „Hourstone – Azeroth Playtime Tracker“ um eine Windows-Übersicht deiner gespeicherten Charakterdaten.
 
 Vergleiche Spielzeiten, suche nach Charakteren oder Gilden und filtere nach Realm und WoW-Client. Für Retail siehst du außerdem den gespeicherten Schlüsselstein, deinen Wochenbestwert und alle neun Plätze der Großen Schatzkammer. Die Detailansicht unterscheidet unbekannte, bestätigte leere und veraltete Werte und zeigt, wann der Fortschritt erfasst wurde.
 
